@@ -1,8 +1,10 @@
 
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, NumericUnderscores #-}
 
-import Brick
-import Brick.BChan (newBChan, writeBChan)
+import Brick hiding (Horizontal, Vertical)
+import Brick.BChan (BChan, newBChan, writeBChan)
+import Brick.Main (halt)
+import Brick.Types (BrickEvent(..), EventM, modify)
 import Brick.Widgets.Border
 import Brick.Widgets.Center
 import qualified Graphics.Vty as V
@@ -14,11 +16,13 @@ import Network.HTTP.Simple
 import GHC.Generics
 import Data.Aeson
 import Data.Maybe (fromMaybe, mapMaybe)
-import Data.List (transpose, elemIndex)
+import Data.List (transpose, elemIndex, zipWith4)
 import System.Process (callCommand)
 import qualified Data.HashMap.Strict as HM
 import System.Directory (getModificationTime)
 import Data.Time.Clock (UTCTime)
+import qualified Data.Aeson.KeyMap as KM
+import qualified Data.Aeson.Key as K
 
 type Name = ()
 type Cell = (String, Maybe String)
@@ -51,6 +55,32 @@ data TableConfig = TableConfig
   , source        :: TableSource
   } deriving Show
 
+data St = St
+  { activeTableIndex :: Int
+  , rowPositions     :: [Int]
+  , colPositions     :: [Int]
+  , tables           :: [TableConfig]
+  , tableRowsData    :: [[Row]]
+  } deriving Show
+
+data AppEvent
+  = UpdateTable Int [Row]
+  | ReloadConfig [TableConfig]
+  deriving Show
+
+selectedAttr :: AttrName
+selectedAttr = attrName "selected"
+
+titleAttr :: AttrName
+titleAttr = attrName "title"
+
+instance FromJSON TablePlacement where
+  parseJSON = withText "TablePlacement" $ \t ->
+    case T.toLower t of
+      "horizontal" -> pure Horizontal
+      "vertical" -> pure Vertical
+      _ -> fail "placement must be 'horizontal' or 'vertical'"
+
 instance FromJSON FieldMapping where
   parseJSON = withObject "FieldMapping" $ \v ->
     FieldMapping <$> v .: "title" <*> v .: "body" <*> v .: "id"
@@ -61,7 +91,9 @@ instance FromJSON TableSource where
     case (typ :: String) of
       "static" -> do
         rawRows <- v .: "rows"
-        let parseCell [txt, mUrl] = (txt, mUrl)
+        let parseCell [txt, mUrl] = (txt, Just mUrl)
+            parseCell [txt] = (txt, Nothing)
+            parseCell _ = ("", Nothing)
         return $ StaticSource (map (map parseCell) rawRows)
       "rest" -> RestSource
         <$> v .: "url"
@@ -112,7 +144,7 @@ drawTable st idx cfg rows = Widget Fixed Fixed $ do
       allLines = headerWidgets ++ tableLines
 
       titled w = case title cfg of
-        Just t -> vBox [withAttr "title" (str t), padTop (Pad 1) w]
+        Just t -> vBox [withAttr titleAttr (str t), padTop (Pad 1) w]
         Nothing -> w
 
   render $ border $ titled $ vBox allLines
@@ -133,7 +165,7 @@ drawLine i row widths selRow selCol line =
   hBox $ zipWith4 (drawCell i row selRow selCol) [0..] line widths (repeat 1)
 
 drawCell :: Int -> Row -> Int -> Int -> Int -> String -> Int -> Int -> Widget Name
-drawCell i row selRow selCol j txt w _ _ =
+drawCell i row selRow selCol j txt w _ =
   let isSel = i == selRow && j == selCol
       attr = if isSel then withAttr selectedAttr else id
   in attr $ str " " <+> padRight (Pad (w - length txt)) (str txt) <+> str " |"
@@ -158,34 +190,36 @@ distributeWidths total weights =
 
 -- Event handling
 
-handleEvent :: St -> BrickEvent Name AppEvent -> EventM Name (Next St)
-handleEvent st (AppEvent (UpdateTable i rs)) =
-  continue st { tableRowsData = updateAt i (const rs) (tableRowsData st) }
+handleEvent :: BrickEvent Name AppEvent -> EventM Name St ()
+handleEvent (AppEvent (UpdateTable i rs)) =
+  modify $ \st ->
+    st { tableRowsData = updateAt i (const rs) (tableRowsData st) }
 
-handleEvent st (AppEvent (ReloadConfig cfgs)) = do
-  rows <- mapM (\cfg -> case source cfg of
-    StaticSource rs -> return rs
-    _ -> return []) cfgs
-  continue st
-    { tables = cfgs
-    , tableRowsData = rows
-    , rowPositions = replicate (length cfgs) 0
-    , colPositions = replicate (length cfgs) 0
-    , activeTableIndex = 0
-    }
+handleEvent (AppEvent (ReloadConfig cfgs)) =
+  let rows = map (\cfg -> case source cfg of
+               StaticSource rs -> rs
+               _ -> []) cfgs
+  in modify $ \st ->
+       st
+         { tables = cfgs
+         , tableRowsData = rows
+         , rowPositions = replicate (length cfgs) 0
+         , colPositions = replicate (length cfgs) 0
+         , activeTableIndex = 0
+         }
 
-handleEvent st (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt st
-handleEvent st _ = continue st
+handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
+handleEvent _ = pure ()
 
 app :: App St AppEvent Name
 app = App
   { appDraw         = drawUI
   , appChooseCursor = neverShowCursor
   , appHandleEvent  = handleEvent
-  , appStartEvent   = return
+  , appStartEvent   = pure ()
   , appAttrMap      = const $ attrMap V.defAttr
-      [ ("selected", fg V.yellow)
-      , ("title", V.withStyle V.defAttr V.bold)
+      [ (selectedAttr, fg V.yellow)
+      , (titleAttr, V.withStyle V.defAttr V.bold)
       ]
   }
 
@@ -193,6 +227,31 @@ app = App
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt i f xs = take i xs ++ [f (xs !! i)] ++ drop (i + 1) xs
+
+lookupFieldString :: String -> Object -> Maybe String
+lookupFieldString key obj =
+  case KM.lookup (K.fromString key) obj of
+    Just (String t) -> Just (T.unpack t)
+    Just (Number n) -> Just (show n)
+    Just (Bool b) -> Just (show b)
+    _ -> Nothing
+
+valueToRow :: FieldMapping -> Value -> Maybe Row
+valueToRow fm (Object obj) = do
+  titleTxt <- lookupFieldString (titleField fm) obj
+  bodyTxt <- lookupFieldString (bodyField fm) obj
+  identTxt <- lookupFieldString (idField fm) obj
+  pure [(titleTxt, Nothing), (bodyTxt, Nothing), (identTxt, Nothing)]
+valueToRow _ _ = Nothing
+
+fetchRestRows :: String -> FieldMapping -> IO [Row]
+fetchRestRows endpoint fm = do
+  req <- parseRequest endpoint
+  resp <- httpLBS req
+  let payload = getResponseBody resp
+  case eitherDecode payload :: Either String [Value] of
+    Right values -> pure (mapMaybe (valueToRow fm) values)
+    Left _ -> pure []
 
 -- Config reloading
 

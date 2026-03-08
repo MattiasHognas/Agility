@@ -6,8 +6,8 @@ packages: .
 write-ghc-environment-files: always
 
 -- Optional: pin specific package versions
--- constraints:
---   brick ==1.3.*, aeson ==2.1.*
+constraints:
+  crypton < 1.0.7
 
 -- Optional: suppress noisy output
 -- verbosity: silent

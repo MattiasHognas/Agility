@@ -19,3 +19,4 @@ executable dashboard
     , http-conduit
     , directory
     , time
+    , process
