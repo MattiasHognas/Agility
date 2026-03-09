@@ -75,12 +75,6 @@ data AppEvent
   | ReloadConfig [TableConfig]
   deriving Show
 
-selectedAttr :: AttrName
-selectedAttr = attrName "selected"
-
-titleAttr :: AttrName
-titleAttr = attrName "title"
-
 textAttr :: Int -> AttrName
 textAttr i = attrName ("table" ++ show i ++ ".text")
 
@@ -315,9 +309,7 @@ app = App
   , appHandleEvent  = handleEvent
   , appStartEvent   = pure ()
   , appAttrMap      = \st -> attrMap V.defAttr $
-      [ (selectedAttr, fg V.yellow)
-      , (titleAttr, V.withStyle V.defAttr V.bold)
-      ] ++ tableAttrs (tables st)
+      tableAttrs (tables st)
   }
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
