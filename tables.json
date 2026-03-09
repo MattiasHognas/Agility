@@ -6,6 +6,14 @@
     "columnWeights": [1, 2],
     "columnHeights": [2, 2],
     "maxWidth": 80,
+    "colors": {
+      "text": "#d8dee9",
+      "border": "#5e81ac",
+      "title": "#88c0d0",
+      "header": "#81a1c1",
+      "selectedText": "#2e3440",
+      "selectedBg": "#a3be8c"
+    },
     "source": {
       "type": "static",
       "rows": [
@@ -15,20 +23,28 @@
     }
   },
   {
-    "title": "Live Posts",
-    "columnHeaders": ["Title", "Body"],
+    "title": "Live Jokes",
+    "columnHeaders": ["Setup", "Punchline"],
     "placement": "Vertical",
     "columnWeights": [2, 3],
     "columnHeights": [2, 3],
+    "colors": {
+      "text": "#e5e9f0",
+      "border": "#d08770",
+      "title": "#ebcb8b",
+      "header": "#e5a75e",
+      "selectedText": "#2e3440",
+      "selectedBg": "#ebcb8b"
+    },
     "source": {
       "type": "rest",
-      "url": "https://jsonplaceholder.typicode.com/posts?_limit=3",
+      "url": "https://official-joke-api.appspot.com/jokes/ten",
       "fields": {
-        "title": "title",
-        "body": "body",
+        "title": "setup",
+        "body": "punchline",
         "id": "id"
       },
-      "refreshSeconds": 10
+      "refreshSeconds": 30
     }
   }
 ]
