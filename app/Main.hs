@@ -1,10 +1,7 @@
-
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, NumericUnderscores #-}
 
 import Brick hiding (Horizontal, Vertical)
 import Brick.BChan (BChan, newBChan, writeBChan)
-import Brick.Main (halt)
-import Brick.Types (BrickEvent(..), EventM, modify)
 import Brick.Widgets.Border
 import Brick.Widgets.Center
 import qualified Graphics.Vty as V
@@ -15,12 +12,9 @@ import qualified Data.ByteString.Lazy as B
 import Network.HTTP.Simple
 import GHC.Generics
 import Data.Aeson
-import Data.Maybe (fromMaybe, mapMaybe)
-import Data.List (transpose, elemIndex, zipWith4)
-import System.Process (callCommand)
-import qualified Data.HashMap.Strict as HM
+import Data.Maybe (mapMaybe)
+import Data.List (transpose, zipWith4)
 import System.Directory (getModificationTime)
-import Data.Time.Clock (UTCTime)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as K
 
@@ -282,8 +276,8 @@ startRestThreads sources chan = mapM_ forkSource sources
 main :: IO ()
 main = do
   let cfgFile = "tables.json"
-  raw <- B.readFile cfgFile
-  case eitherDecode raw of
+  file <- B.readFile cfgFile
+  case eitherDecode file of
     Left err -> putStrLn ("Failed to load config: " ++ err)
     Right tableCfgs -> do
       chan <- newBChan 10

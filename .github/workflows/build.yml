@@ -29,7 +29,7 @@ jobs:
         #    ghc-version: '9.8'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up GHC ${{ matrix.ghc-version }}
         uses: haskell-actions/setup@v2
@@ -42,12 +42,12 @@ jobs:
 
       - name: Configure the build
         run: |
-          cabal configure --enable-tests --enable-benchmarks --disable-documentation
-          cabal build all --dry-run
+          cabal v2-configure --enable-tests --enable-benchmarks --disable-documentation
+          cabal v2-build all --dry-run
         # The last step generates dist-newstyle/cache/plan.json for the cache key.
 
       - name: Restore cached dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: cache
         env:
           key: ${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}
@@ -59,11 +59,11 @@ jobs:
       - name: Install dependencies
         # If we had an exact cache hit, the dependencies will be up to date.
         if: steps.cache.outputs.cache-hit != 'true'
-        run: cabal build all --only-dependencies
+        run: cabal v2-build all --only-dependencies
 
       # Cache dependencies already here, so that we do not have to rebuild them should the subsequent steps fail.
       - name: Save cached dependencies
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         # If we had an exact cache hit, trying to save the cache would error because of key clash.
         if: steps.cache.outputs.cache-hit != 'true'
         with:
@@ -71,17 +71,17 @@ jobs:
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
       - name: Build
-        run: cabal build all
+        run: cabal v2-build all
 
       - name: Run tests
-        run: cabal test all
+        run: cabal v2-test all
 
       - name: Check cabal file
         run: cabal check
 
       - name: Build documentation
         run:
-          cabal haddock all --disable-documentation
+          cabal v2-haddock --haddock-all --disable-documentation
           # --disable-documentation disables building documentation for dependencies.
           # The package's own documentation is still built,
           # yet contains no links to the documentation of the dependencies.
