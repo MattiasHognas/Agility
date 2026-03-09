@@ -3,6 +3,6 @@
 A dashboard for monitoring and visualizing data, built in Haskell.
 
 ```bash
-ghc App.hs -o dashboard
-./dashboard
+stack build
+stack exec Agility -- +RTS -N
 ```

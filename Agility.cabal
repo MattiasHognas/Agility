@@ -61,6 +61,8 @@ executable Agility
     -- Import common warning flags.
     import:           warnings
 
+    ghc-options:      -threaded -rtsopts
+
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
 
@@ -72,21 +74,22 @@ executable Agility
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base                    ^>=4.18,
-        brick                   >=2.10,
-        vty                     >=6.5,
+        base                    >=4.20.2.0,
+        brick                   >=2.9,
+        vty                     >=6.4,
         aeson                   >=2.2.3.0,
-        time                    ^>=1.12.2,
-        directory               >=1.3.10.1,
-        text                    >=2.1.4,
+        time                    >=1.12.2,
+        directory               >=1.3.8.5,
+        text                    >=2.1.3,
         containers              >=0.7,
-        unordered-containers    >=0.2.21,
+        unordered-containers    >=0.2.20.1,
         bytestring              >=0.12.2.0,
         http-conduit            >=2.3.9.1,
-        process                 >=1.6.27.0,
+        process                 >=1.6.26.0,
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
     default-language: GHC2021
+

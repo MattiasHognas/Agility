@@ -20,9 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc-version: [9.14.1] # List of GHC versions to test
-
-        #include:
+        ghc-version: [9.10.3] # List of GHC versions to test
         #  - os: windows-latest
         #    ghc-version: '9.8'
         #  - os: macos-latest
@@ -36,9 +34,10 @@ jobs:
         id: setup
         with:
           ghc-version: ${{ matrix.ghc-version }}
-          # Defaults, added for clarity:
           cabal-version: 'latest'
           cabal-update: true
+          enable-stack: true
+          stack-setup-ghc: true
 
       - name: Configure the build
         run: |
