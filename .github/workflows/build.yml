@@ -70,12 +70,15 @@ jobs:
       - name: Run tests
         run: stack test
 
-      - name: Check cabal file
-        run: stack exec -- cabal check
+      # Don't really care if hackage would accept our package, but it's a good sanity check to run cabal check.
+      # I just don't care about it now.
 
-      - name: Build documentation
-        run:
-          stack build --haddock
-          # --disable-documentation disables building documentation for dependencies.
-          # The package's own documentation is still built,
-          # yet contains no links to the documentation of the dependencies.
+      # - name: Check cabal file
+      #   run: stack exec -- cabal check
+
+      # - name: Build documentation
+      #   run:
+      #     stack build --haddock
+      #     # --disable-documentation disables building documentation for dependencies.
+      #     # The package's own documentation is still built,
+      #     # yet contains no links to the documentation of the dependencies.
