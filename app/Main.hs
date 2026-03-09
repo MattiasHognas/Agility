@@ -75,14 +75,8 @@ data AppEvent
   | ReloadConfig [TableConfig]
   deriving Show
 
-selectedAttr :: AttrName
-selectedAttr = attrName "selected"
-
 defaultSelectedAttr :: V.Attr
 defaultSelectedAttr = fg V.yellow
-
-titleAttr :: AttrName
-titleAttr = attrName "title"
 
 textAttr :: Int -> AttrName
 textAttr i = attrName ("table" ++ show i ++ ".text")
@@ -110,15 +104,26 @@ instance FromJSON FieldMapping where
   parseJSON = withObject "FieldMapping" $ \v ->
     FieldMapping <$> v .: "title" <*> v .: "body" <*> v .: "id"
 
+parseValidColor :: Object -> String -> Parser (Maybe String)
+parseValidColor v keyStr = do
+  ms <- v .:? K.fromString keyStr
+  case ms of
+    Nothing -> pure Nothing
+    Just s  -> case parseColor s of
+      Just _  -> pure (Just s)
+      Nothing -> fail $
+        "Invalid color value for '" ++ keyStr ++ "': \"" ++ s ++
+        "\". Use a named color (e.g. \"red\", \"blue\") or a hex value (e.g. \"#ff0000\")."
+
 instance FromJSON ColorConfig where
   parseJSON = withObject "ColorConfig" $ \v ->
     ColorConfig
-      <$> v .:? "text"
-      <*> v .:? "border"
-      <*> v .:? "title"
-      <*> v .:? "header"
-      <*> v .:? "selectedText"
-      <*> v .:? "selectedBg"
+      <$> parseValidColor v "text"
+      <*> parseValidColor v "border"
+      <*> parseValidColor v "title"
+      <*> parseValidColor v "header"
+      <*> parseValidColor v "selectedText"
+      <*> parseValidColor v "selectedBg"
 
 instance FromJSON TableSource where
   parseJSON = withObject "TableSource" $ \v -> do
@@ -181,32 +186,26 @@ mkAttr mFg mBg =
       withF = maybe base (\s -> maybe base (`fg` base) (parseColor s)) mFg
   in maybe withF (\s -> maybe withF (`bg` withF) (parseColor s)) mBg
 
-mkAttrFromColors :: Maybe V.Color -> Maybe V.Color -> V.Attr
-mkAttrFromColors mFg mBg =
-  let base  = V.defAttr
-      withF = maybe base (`fg` base) mFg
-  in maybe withF (`bg` withF) mBg
-
 tableAttrs :: [TableConfig] -> [(AttrName, V.Attr)]
 tableAttrs cfgs =
   concatMap one (zip [0 ..] cfgs)
   where
     one (i, cfg) =
-      let c      = colors cfg
-          txt    = c >>= textColor
-          bord   = c >>= borderColor
-          ttl    = c >>= titleColor
-          hdr    = c >>= headerColor
-          selFgC = c >>= selectedTextColor >>= parseColor
-          selBgC = c >>= selectedBgColor   >>= parseColor
+      let c     = colors cfg
+          txt   = c >>= textColor
+          bord  = c >>= borderColor
+          ttl   = c >>= titleColor
+          hdr   = c >>= headerColor
+          selFg = c >>= selectedTextColor
+          selBg = c >>= selectedBgColor
       in
         [ (textAttr i,         mkAttr txt Nothing)
         , (borderAttr i,       mkAttr bord Nothing)
         , (headerAttr i,       mkAttr hdr Nothing)
         , (tableTitleAttr i,   V.withStyle (mkAttr ttl Nothing) V.bold)
-        , (selectedTableAttr i, case selFgC <|> selBgC of
+        , (selectedTableAttr i, case selFg <|> selBg of
                                   Nothing -> defaultSelectedAttr
-                                  Just _  -> mkAttrFromColors selFgC selBgC)
+                                  Just _  -> mkAttr selFg selBg)
         ]
 
 drawUI :: St -> [Widget Name]
@@ -326,9 +325,7 @@ app = App
   , appHandleEvent  = handleEvent
   , appStartEvent   = pure ()
   , appAttrMap      = \st -> attrMap V.defAttr $
-      [ (selectedAttr, defaultSelectedAttr)
-      , (titleAttr, V.withStyle V.defAttr V.bold)
-      ] ++ tableAttrs (tables st)
+      tableAttrs (tables st)
   }
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
