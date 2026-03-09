@@ -101,15 +101,26 @@ instance FromJSON FieldMapping where
   parseJSON = withObject "FieldMapping" $ \v ->
     FieldMapping <$> v .: "title" <*> v .: "body" <*> v .: "id"
 
+parseValidColor :: Object -> String -> Parser (Maybe String)
+parseValidColor v keyStr = do
+  ms <- v .:? K.fromString keyStr
+  case ms of
+    Nothing -> pure Nothing
+    Just s  -> case parseColor s of
+      Just _  -> pure (Just s)
+      Nothing -> fail $
+        "Invalid color value for '" ++ keyStr ++ "': \"" ++ s ++
+        "\". Use a named color (e.g. \"red\", \"blue\") or a hex value (e.g. \"#ff0000\")."
+
 instance FromJSON ColorConfig where
   parseJSON = withObject "ColorConfig" $ \v ->
     ColorConfig
-      <$> v .:? "text"
-      <*> v .:? "border"
-      <*> v .:? "title"
-      <*> v .:? "header"
-      <*> v .:? "selectedText"
-      <*> v .:? "selectedBg"
+      <$> parseValidColor v "text"
+      <*> parseValidColor v "border"
+      <*> parseValidColor v "title"
+      <*> parseValidColor v "header"
+      <*> parseValidColor v "selectedText"
+      <*> parseValidColor v "selectedBg"
 
 instance FromJSON TableSource where
   parseJSON = withObject "TableSource" $ \v -> do
