@@ -78,6 +78,9 @@ data AppEvent
 selectedAttr :: AttrName
 selectedAttr = attrName "selected"
 
+defaultSelectedAttr :: V.Attr
+defaultSelectedAttr = fg V.yellow
+
 titleAttr :: AttrName
 titleAttr = attrName "title"
 
@@ -178,26 +181,32 @@ mkAttr mFg mBg =
       withF = maybe base (\s -> maybe base (`fg` base) (parseColor s)) mFg
   in maybe withF (\s -> maybe withF (`bg` withF) (parseColor s)) mBg
 
+mkAttrFromColors :: Maybe V.Color -> Maybe V.Color -> V.Attr
+mkAttrFromColors mFg mBg =
+  let base  = V.defAttr
+      withF = maybe base (`fg` base) mFg
+  in maybe withF (`bg` withF) mBg
+
 tableAttrs :: [TableConfig] -> [(AttrName, V.Attr)]
 tableAttrs cfgs =
   concatMap one (zip [0 ..] cfgs)
   where
     one (i, cfg) =
-      let c     = colors cfg
-          txt   = c >>= textColor
-          bord  = c >>= borderColor
-          ttl   = c >>= titleColor
-          hdr   = c >>= headerColor
-          selFg = c >>= selectedTextColor
-          selBg = c >>= selectedBgColor
+      let c      = colors cfg
+          txt    = c >>= textColor
+          bord   = c >>= borderColor
+          ttl    = c >>= titleColor
+          hdr    = c >>= headerColor
+          selFgC = c >>= selectedTextColor >>= parseColor
+          selBgC = c >>= selectedBgColor   >>= parseColor
       in
         [ (textAttr i,         mkAttr txt Nothing)
         , (borderAttr i,       mkAttr bord Nothing)
         , (headerAttr i,       mkAttr hdr Nothing)
         , (tableTitleAttr i,   V.withStyle (mkAttr ttl Nothing) V.bold)
-        , (selectedTableAttr i, case selFg <|> selBg of
-                                  Nothing -> fg V.yellow
-                                  Just _  -> mkAttr selFg selBg)
+        , (selectedTableAttr i, case selFgC <|> selBgC of
+                                  Nothing -> defaultSelectedAttr
+                                  Just _  -> mkAttrFromColors selFgC selBgC)
         ]
 
 drawUI :: St -> [Widget Name]
@@ -317,7 +326,7 @@ app = App
   , appHandleEvent  = handleEvent
   , appStartEvent   = pure ()
   , appAttrMap      = \st -> attrMap V.defAttr $
-      [ (selectedAttr, fg V.yellow)
+      [ (selectedAttr, defaultSelectedAttr)
       , (titleAttr, V.withStyle V.defAttr V.bold)
       ] ++ tableAttrs (tables st)
   }
