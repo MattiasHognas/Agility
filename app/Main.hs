@@ -200,7 +200,9 @@ tableAttrs cfgs =
         , (borderAttr i,       mkAttr bord Nothing)
         , (headerAttr i,       mkAttr hdr Nothing)
         , (tableTitleAttr i,   V.withStyle (mkAttr ttl Nothing) V.bold)
-        , (selectedTableAttr i, mkAttr selFg selBg)
+        , (selectedTableAttr i, case selFg <|> selBg of
+                                  Nothing -> fg V.yellow
+                                  Just _  -> mkAttr selFg selBg)
         ]
 
 drawUI :: St -> [Widget Name]
