@@ -7,6 +7,7 @@ import Brick.Widgets.Center
 import qualified Graphics.Vty as V
 import Control.Concurrent
 import Control.Monad (forever, when, void)
+import Control.Applicative ((<|>))
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
 import Network.HTTP.Simple
@@ -17,6 +18,8 @@ import Data.List (transpose, zipWith4)
 import System.Directory (getModificationTime)
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as K
+import Data.Char (toLower)
+import Numeric (readHex)
 
 type Name = ()
 type Cell = (String, Maybe String)
@@ -39,6 +42,15 @@ data FieldMapping = FieldMapping
   , idField    :: String
   } deriving (Show, Generic)
 
+data ColorConfig = ColorConfig
+  { textColor         :: Maybe String
+  , borderColor       :: Maybe String
+  , titleColor        :: Maybe String
+  , headerColor       :: Maybe String
+  , selectedTextColor :: Maybe String
+  , selectedBgColor   :: Maybe String
+  } deriving Show
+
 data TableConfig = TableConfig
   { title         :: Maybe String
   , columnHeaders :: Maybe [String]
@@ -46,6 +58,7 @@ data TableConfig = TableConfig
   , columnWeights :: [Int]
   , columnHeights :: [Int]
   , maxWidth      :: Maybe Int
+  , colors        :: Maybe ColorConfig
   , source        :: TableSource
   } deriving Show
 
@@ -68,16 +81,41 @@ selectedAttr = attrName "selected"
 titleAttr :: AttrName
 titleAttr = attrName "title"
 
+textAttr :: Int -> AttrName
+textAttr i = attrName ("table" ++ show i ++ ".text")
+
+borderAttr :: Int -> AttrName
+borderAttr i = attrName ("table" ++ show i ++ ".border")
+
+headerAttr :: Int -> AttrName
+headerAttr i = attrName ("table" ++ show i ++ ".header")
+
+tableTitleAttr :: Int -> AttrName
+tableTitleAttr i = attrName ("table" ++ show i ++ ".title")
+
+selectedTableAttr :: Int -> AttrName
+selectedTableAttr i = attrName ("table" ++ show i ++ ".selected")
+
 instance FromJSON TablePlacement where
   parseJSON = withText "TablePlacement" $ \t ->
     case T.toLower t of
       "horizontal" -> pure Horizontal
-      "vertical" -> pure Vertical
+      "vertical"   -> pure Vertical
       _ -> fail "placement must be 'horizontal' or 'vertical'"
 
 instance FromJSON FieldMapping where
   parseJSON = withObject "FieldMapping" $ \v ->
     FieldMapping <$> v .: "title" <*> v .: "body" <*> v .: "id"
+
+instance FromJSON ColorConfig where
+  parseJSON = withObject "ColorConfig" $ \v ->
+    ColorConfig
+      <$> v .:? "text"
+      <*> v .:? "border"
+      <*> v .:? "title"
+      <*> v .:? "header"
+      <*> v .:? "selectedText"
+      <*> v .:? "selectedBg"
 
 instance FromJSON TableSource where
   parseJSON = withObject "TableSource" $ \v -> do
@@ -86,9 +124,9 @@ instance FromJSON TableSource where
       "static" -> do
         rawRows <- v .: "rows"
         let parseCell [txt, mUrl] = (txt, Just mUrl)
-            parseCell [txt] = (txt, Nothing)
-            parseCell _ = ("", Nothing)
-        return $ StaticSource (map (map parseCell) rawRows)
+            parseCell [txt]       = (txt, Nothing)
+            parseCell _           = ("", Nothing)
+        pure $ StaticSource (map (map parseCell) rawRows)
       "rest" -> RestSource
         <$> v .: "url"
         <*> v .: "fields"
@@ -103,9 +141,62 @@ instance FromJSON TableConfig where
                 <*> v .:  "columnWeights"
                 <*> v .:  "columnHeights"
                 <*> v .:? "maxWidth"
+                <*> v .:? "colors"
                 <*> v .:  "source"
 
--- Drawing logic using maxWidth
+parseNamedColor :: String -> Maybe V.Color
+parseNamedColor s =
+  case map toLower s of
+    "black"   -> Just V.black
+    "red"     -> Just V.red
+    "green"   -> Just V.green
+    "yellow"  -> Just V.yellow
+    "blue"    -> Just V.blue
+    "magenta" -> Just V.magenta
+    "cyan"    -> Just V.cyan
+    "white"   -> Just V.white
+    _         -> Nothing
+
+parseHexColor :: String -> Maybe V.Color
+parseHexColor ('#':xs)
+  | length xs == 6 =
+      case mapM read2 [take 2 xs, take 2 (drop 2 xs), take 2 (drop 4 xs)] of
+        Just [r, g, b] -> Just (V.rgbColor r g b)
+        _              -> Nothing
+  where
+    read2 h = case readHex h of
+      [(n, "")] -> Just n
+      _         -> Nothing
+parseHexColor _ = Nothing
+
+parseColor :: String -> Maybe V.Color
+parseColor s = parseNamedColor s <|> parseHexColor s
+
+mkAttr :: Maybe String -> Maybe String -> V.Attr
+mkAttr mFg mBg =
+  let base  = V.defAttr
+      withF = maybe base (\s -> maybe base (`fg` base) (parseColor s)) mFg
+  in maybe withF (\s -> maybe withF (`bg` withF) (parseColor s)) mBg
+
+tableAttrs :: [TableConfig] -> [(AttrName, V.Attr)]
+tableAttrs cfgs =
+  concatMap one (zip [0 ..] cfgs)
+  where
+    one (i, cfg) =
+      let c     = colors cfg
+          txt   = c >>= textColor
+          bord  = c >>= borderColor
+          ttl   = c >>= titleColor
+          hdr   = c >>= headerColor
+          selFg = c >>= selectedTextColor
+          selBg = c >>= selectedBgColor
+      in
+        [ (textAttr i,         mkAttr txt Nothing)
+        , (borderAttr i,       mkAttr bord Nothing)
+        , (headerAttr i,       mkAttr hdr Nothing)
+        , (tableTitleAttr i,   V.withStyle (mkAttr ttl Nothing) V.bold)
+        , (selectedTableAttr i, mkAttr selFg selBg)
+        ]
 
 drawUI :: St -> [Widget Name]
 drawUI st = [center $ layoutTables st (tables st) (tableRowsData st) 0]
@@ -123,49 +214,63 @@ layoutTables _ _ _ _ = emptyWidget
 drawTable :: St -> Int -> TableConfig -> [Row] -> Widget Name
 drawTable st idx cfg rows = Widget Fixed Fixed $ do
   ctx <- getContext
-  let avail = availWidth ctx
-      usable = maybe avail (min avail) (maxWidth cfg)
-      colWs = distributeWidths usable (columnWeights cfg)
+  let avail   = availWidth ctx
+      usable  = maybe avail (min avail) (maxWidth cfg)
+      colWs   = distributeWidths usable (columnWeights cfg)
       heights = columnHeights cfg
-      selRow = if activeTableIndex st == idx then rowPositions st !! idx else -1
-      selCol = if activeTableIndex st == idx then colPositions st !! idx else -1
+      selRow  = if activeTableIndex st == idx then rowPositions st !! idx else -1
+      selCol  = if activeTableIndex st == idx then colPositions st !! idx else -1
 
       headerWidgets = case columnHeaders cfg of
-        Just hs -> [drawHeaderRow colWs hs, drawBorder colWs]
+        Just hs -> [drawHeaderRow idx colWs hs, drawBorder idx colWs]
         Nothing -> []
 
-      tableLines = concatMap (drawRow colWs heights selRow selCol) (zip [0..] rows)
-      allLines = headerWidgets ++ tableLines
+      tableLines = concatMap (drawRow idx colWs heights selRow selCol) (zip [0..] rows)
+      allLines   = headerWidgets ++ tableLines
 
       titled w = case title cfg of
-        Just t -> vBox [withAttr titleAttr (str t), padTop (Pad 1) w]
+        Just t  -> vBox [withAttr (tableTitleAttr idx) (str t), padTop (Pad 1) w]
         Nothing -> w
 
-  render $ border $ titled $ vBox allLines
+  render $
+    withAttr (borderAttr idx) $
+      border $
+        titled $
+          vBox allLines
 
-drawHeaderRow :: [Int] -> [String] -> Widget Name
-drawHeaderRow colWs hs =
-  hBox $ zipWith (\w h -> padRight (Pad (w - length h)) (str h) <+> str " |") colWs (take (length colWs) hs ++ repeat "")
+drawHeaderRow :: Int -> [Int] -> [String] -> Widget Name
+drawHeaderRow idx colWs hs =
+  hBox $
+    zipWith
+      (\w h ->
+        withAttr (headerAttr idx) (padRight (Pad (w - length h)) (str h))
+        <+> withAttr (borderAttr idx) (str " |"))
+      colWs
+      (take (length colWs) hs ++ repeat "")
 
-drawRow :: [Int] -> [Int] -> Int -> Int -> (Int, Row) -> [Widget Name]
-drawRow widths heights selRow selCol (i, row) =
-  let wrapped = zipWith3 (\w h (txt, _) -> wrapOrTruncate w h txt) widths heights row
-      padded = padCells (maximum heights) wrapped
+drawRow :: Int -> [Int] -> [Int] -> Int -> Int -> (Int, Row) -> [Widget Name]
+drawRow tableIdx widths heights selRow selCol (i, row) =
+  let wrapped     = zipWith3 (\w h (txt, _) -> wrapOrTruncate w h txt) widths heights row
+      padded      = padCells (maximum heights) wrapped
       linesPerRow = transpose padded
-  in map (drawLine i row widths selRow selCol) linesPerRow ++ [drawBorder widths]
+  in map (drawLine tableIdx i row widths selRow selCol) linesPerRow ++ [drawBorder tableIdx widths]
 
-drawLine :: Int -> Row -> [Int] -> Int -> Int -> [String] -> Widget Name
-drawLine i row widths selRow selCol line =
-  hBox $ zipWith4 (drawCell i row selRow selCol) [0..] line widths (repeat 1)
+drawLine :: Int -> Int -> Row -> [Int] -> Int -> Int -> [String] -> Widget Name
+drawLine tableIdx i row widths selRow selCol line =
+  hBox $ zipWith4 (drawCell tableIdx i row selRow selCol) [0..] line widths (repeat 1)
 
-drawCell :: Int -> Row -> Int -> Int -> Int -> String -> Int -> Int -> Widget Name
-drawCell i row selRow selCol j txt w _ =
-  let isSel = i == selRow && j == selCol
-      attr = if isSel then withAttr selectedAttr else id
-  in attr $ str " " <+> padRight (Pad (w - length txt)) (str txt) <+> str " |"
+drawCell :: Int -> Int -> Row -> Int -> Int -> Int -> String -> Int -> Int -> Widget Name
+drawCell tableIdx i _ selRow selCol j txt w _ =
+  let isSel    = i == selRow && j == selCol
+      cellAttr = if isSel then withAttr (selectedTableAttr tableIdx)
+                         else withAttr (textAttr tableIdx)
+      bar      = withAttr (borderAttr tableIdx) (str " |")
+  in cellAttr (str " " <+> padRight (Pad (w - length txt)) (str txt)) <+> bar
 
-drawBorder :: [Int] -> Widget Name
-drawBorder widths = str "+" <+> hBox (map (\w -> str (replicate (w + 3) '-')) widths) <+> str "+"
+drawBorder :: Int -> [Int] -> Widget Name
+drawBorder idx widths =
+  withAttr (borderAttr idx) $
+    str "+" <+> hBox (map (\w -> str (replicate (w + 3) '-')) widths) <+> str "+"
 
 wrapOrTruncate :: Int -> Int -> String -> [String]
 wrapOrTruncate w h txt =
@@ -182,8 +287,6 @@ distributeWidths total weights =
   let sumW = sum weights
   in map (\w -> max 10 $ w * total `div` sumW) weights
 
--- Event handling
-
 handleEvent :: BrickEvent Name AppEvent -> EventM Name St ()
 handleEvent (AppEvent (UpdateTable i rs)) =
   modify $ \st ->
@@ -192,7 +295,7 @@ handleEvent (AppEvent (UpdateTable i rs)) =
 handleEvent (AppEvent (ReloadConfig cfgs)) =
   let rows = map (\cfg -> case source cfg of
                StaticSource rs -> rs
-               _ -> []) cfgs
+               _               -> []) cfgs
   in modify $ \st ->
        st
          { tables = cfgs
@@ -211,13 +314,11 @@ app = App
   , appChooseCursor = neverShowCursor
   , appHandleEvent  = handleEvent
   , appStartEvent   = pure ()
-  , appAttrMap      = const $ attrMap V.defAttr
+  , appAttrMap      = \st -> attrMap V.defAttr $
       [ (selectedAttr, fg V.yellow)
       , (titleAttr, V.withStyle V.defAttr V.bold)
-      ]
+      ] ++ tableAttrs (tables st)
   }
-
--- Helpers
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt i f xs = take i xs ++ [f (xs !! i)] ++ drop (i + 1) xs
@@ -227,13 +328,13 @@ lookupFieldString key obj =
   case KM.lookup (K.fromString key) obj of
     Just (String t) -> Just (T.unpack t)
     Just (Number n) -> Just (show n)
-    Just (Bool b) -> Just (show b)
-    _ -> Nothing
+    Just (Bool b)   -> Just (show b)
+    _               -> Nothing
 
 valueToRow :: FieldMapping -> Value -> Maybe Row
 valueToRow fm (Object obj) = do
   titleTxt <- lookupFieldString (titleField fm) obj
-  bodyTxt <- lookupFieldString (bodyField fm) obj
+  bodyTxt  <- lookupFieldString (bodyField fm) obj
   identTxt <- lookupFieldString (idField fm) obj
   pure [(titleTxt, Nothing), (bodyTxt, Nothing), (identTxt, Nothing)]
 valueToRow _ _ = Nothing
@@ -245,33 +346,41 @@ fetchRestRows endpoint fm = do
   let payload = getResponseBody resp
   case eitherDecode payload :: Either String [Value] of
     Right values -> pure (mapMaybe (valueToRow fm) values)
-    Left _ -> pure []
-
--- Config reloading
+    Left _       -> pure []
 
 watchConfig :: FilePath -> BChan AppEvent -> IO ()
 watchConfig path chan = do
-  lastMod <- getModificationTime path
-  forever $ do
-    threadDelay 2_000_000
-    newMod <- getModificationTime path
-    when (newMod > lastMod) $ do
-      res <- B.readFile path
-      case eitherDecode res of
-        Right cfg -> writeBChan chan (ReloadConfig cfg)
-        Left err -> putStrLn $ "JSON parse error: " ++ err
+  initialMod <- getModificationTime path
+  loop initialMod
+  where
+    loop lastMod = do
+      threadDelay 2_000_000
+      newMod <- getModificationTime path
+
+      nextMod <-
+        if newMod > lastMod
+          then do
+            res <- B.readFile path
+            case eitherDecode res of
+              Right cfg -> do
+                writeBChan chan (ReloadConfig cfg)
+                pure newMod
+              Left err -> do
+                putStrLn $ "JSON parse error: " ++ err
+                pure lastMod
+          else pure lastMod
+
+      loop nextMod
 
 startRestThreads :: [(Int, TableSource)] -> BChan AppEvent -> IO ()
 startRestThreads sources chan = mapM_ forkSource sources
   where
-    forkSource (i, RestSource url fields refresh) =
+    forkSource (i, RestSource endpoint fm refresh) =
       void $ forkIO $ forever $ do
-        rows <- fetchRestRows url fields
+        rows <- fetchRestRows endpoint fm
         writeBChan chan (UpdateTable i rows)
         threadDelay (refresh * 1_000_000)
-    forkSource _ = return ()
-
--- Main
+    forkSource _ = pure ()
 
 main :: IO ()
 main = do
@@ -284,7 +393,12 @@ main = do
       void $ forkIO $ watchConfig cfgFile chan
       startRestThreads (zip [0..] (map source tableCfgs)) chan
       rows <- mapM (\cfg -> case source cfg of
-        StaticSource rs -> return rs
-        _ -> return []) tableCfgs
-      let st = St 0 (replicate (length tableCfgs) 0) (replicate (length tableCfgs) 0) tableCfgs rows
+        StaticSource rs -> pure rs
+        _               -> pure []) tableCfgs
+      let st = St
+            0
+            (replicate (length tableCfgs) 0)
+            (replicate (length tableCfgs) 0)
+            tableCfgs
+            rows
       void $ defaultMain app st
