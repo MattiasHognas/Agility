@@ -75,9 +75,6 @@ data AppEvent
   | ReloadConfig [TableConfig]
   deriving Show
 
-defaultSelectedAttr :: V.Attr
-defaultSelectedAttr = fg V.yellow
-
 textAttr :: Int -> AttrName
 textAttr i = attrName ("table" ++ show i ++ ".text")
 
@@ -204,7 +201,7 @@ tableAttrs cfgs =
         , (headerAttr i,       mkAttr hdr Nothing)
         , (tableTitleAttr i,   V.withStyle (mkAttr ttl Nothing) V.bold)
         , (selectedTableAttr i, case selFg <|> selBg of
-                                  Nothing -> defaultSelectedAttr
+                                  Nothing -> fg V.yellow
                                   Just _  -> mkAttr selFg selBg)
         ]
 
