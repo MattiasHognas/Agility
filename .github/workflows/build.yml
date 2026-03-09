@@ -20,16 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # ghc-version: [9.10.3] # List of GHC versions to test
-        #  - os: windows-latest
-        #    ghc-version: '9.8'
-        #  - os: macos-latest
-        #    ghc-version: '9.8'
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up GHC ${{ matrix.ghc-version }}
+      - name: Set up GHC on ${{ matrix.os }}
         uses: haskell-actions/setup@v2
         id: setup
         with:
