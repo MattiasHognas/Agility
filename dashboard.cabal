@@ -1,10 +1,10 @@
+cabal-version:   >=1.10
 name:            dashboard
 version:         0.1.0.0
 synopsis:        A TUI dashboard for anything
 license:         MIT
 author:          Mattias Högnäs
 build-type:      Simple
-cabal-version:   >=1.10
 
 executable dashboard
   main-is:             App.hs
