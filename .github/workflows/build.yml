@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ghc-version: [9.10.3] # List of GHC versions to test
+        # ghc-version: [9.10.3] # List of GHC versions to test
         #  - os: windows-latest
         #    ghc-version: '9.8'
         #  - os: macos-latest
@@ -33,8 +33,9 @@ jobs:
         uses: haskell-actions/setup@v2
         id: setup
         with:
-          ghc-version: ${{ matrix.ghc-version }}
+          ghc-version: 'latest'
           cabal-version: 'latest'
+          stack-version: 'latest'
           cabal-update: true
           enable-stack: true
           stack-setup-ghc: true
@@ -70,7 +71,7 @@ jobs:
         run: stack test
 
       - name: Check cabal file
-        run: stack check
+        run: stack exec -- cabal check
 
       - name: Build documentation
         run:
