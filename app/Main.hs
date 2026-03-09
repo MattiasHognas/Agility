@@ -181,8 +181,8 @@ parseColor s = parseNamedColor s <|> parseHexColor s
 mkAttr :: Maybe String -> Maybe String -> V.Attr
 mkAttr mFg mBg =
   let base  = V.defAttr
-      withF = maybe base (\s -> maybe base (`fg` base) (parseColor s)) mFg
-  in maybe withF (\s -> maybe withF (`bg` withF) (parseColor s)) mBg
+      withF = maybe base (\s -> maybe base (\c -> fg c base) (parseColor s)) mFg
+  in maybe withF (\s -> maybe withF (\c -> bg c withF) (parseColor s)) mBg
 
 tableAttrs :: [TableConfig] -> [(AttrName, V.Attr)]
 tableAttrs cfgs =
