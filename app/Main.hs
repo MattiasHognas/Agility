@@ -6,7 +6,7 @@ import Brick.Widgets.Border
 import Brick.Widgets.Center
 import qualified Graphics.Vty as V
 import Control.Concurrent
-import Control.Monad (forever, when, void)
+import Control.Monad (forever, void)
 import Control.Applicative ((<|>))
 import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as B
