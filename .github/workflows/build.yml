@@ -39,12 +39,6 @@ jobs:
           enable-stack: true
           stack-setup-ghc: true
 
-      - name: Configure the build
-        run: |
-          cabal v2-configure --enable-tests --enable-benchmarks --disable-documentation
-          cabal v2-build all --dry-run
-        # The last step generates dist-newstyle/cache/plan.json for the cache key.
-
       - name: Restore cached dependencies
         uses: actions/cache/restore@v5
         id: cache
@@ -58,7 +52,7 @@ jobs:
       - name: Install dependencies
         # If we had an exact cache hit, the dependencies will be up to date.
         if: steps.cache.outputs.cache-hit != 'true'
-        run: cabal v2-build all --only-dependencies
+        run: stack build --only-dependencies
 
       # Cache dependencies already here, so that we do not have to rebuild them should the subsequent steps fail.
       - name: Save cached dependencies
@@ -70,17 +64,17 @@ jobs:
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
       - name: Build
-        run: cabal v2-build all
+        run: stack build
 
       - name: Run tests
-        run: cabal v2-test all
+        run: stack test
 
       - name: Check cabal file
-        run: cabal check
+        run: stack check
 
       - name: Build documentation
         run:
-          cabal v2-haddock --haddock-all --disable-documentation
+          stack build --haddock
           # --disable-documentation disables building documentation for dependencies.
           # The package's own documentation is still built,
           # yet contains no links to the documentation of the dependencies.
