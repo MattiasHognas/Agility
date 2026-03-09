@@ -40,9 +40,7 @@ jobs:
         env:
           key: ${{ runner.os }}-stack-${{ steps.setup.outputs.stack-version }}
         with:
-          path: |
-            ~/.stack
-            .stack-work
+          path: ~/.stack
           key: ${{ env.key }}-${{ hashFiles('stack.yaml.lock', 'package.yaml') }}
           restore-keys: ${{ env.key }}-
 
@@ -57,9 +55,7 @@ jobs:
         # If we had an exact cache hit, trying to save the cache would error because of key clash.
         if: steps.cache.outputs.cache-hit != 'true'
         with:
-          path: |
-            ~/.stack
-            .stack-work
+          path: ~/.stack
           key: ${{ steps.cache.outputs.cache-primary-key }}
 
       - name: Build
