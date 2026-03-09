@@ -24,14 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up GHC on ${{ matrix.os }}
+      - name: Set up Stack on ${{ matrix.os }}
         uses: haskell-actions/setup@v2
         id: setup
         with:
-          ghc-version: 'latest'
-          stack-version: 'latest'
-          cabal-update: false
           enable-stack: true
+          stack-no-global: true
           stack-setup-ghc: true
 
       - name: Restore cached dependencies
