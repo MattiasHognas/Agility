@@ -43,7 +43,7 @@ jobs:
           path: |
             ~/.stack
             .stack-work
-          key: ${{ env.key }}-${{ hashFiles('stack.yaml.lock', '**/*.cabal') }}
+          key: ${{ env.key }}-${{ hashFiles('stack.yaml.lock', 'package.yaml') }}
           restore-keys: ${{ env.key }}-
 
       - name: Install dependencies
