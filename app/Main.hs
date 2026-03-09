@@ -2,7 +2,7 @@
 
 import Brick hiding (Horizontal, Vertical)
 import Brick.BChan (BChan, newBChan, writeBChan)
-import Brick.Widgets.Border
+import Brick.Widgets.Border hiding (borderAttr)
 import Brick.Widgets.Center
 import qualified Graphics.Vty as V
 import Control.Concurrent
@@ -13,6 +13,7 @@ import qualified Data.ByteString.Lazy as B
 import Network.HTTP.Simple
 import GHC.Generics
 import Data.Aeson
+import Data.Aeson.Types (Parser)
 import Data.Maybe (mapMaybe)
 import Data.List (transpose, zipWith4)
 import System.Directory (getModificationTime)
