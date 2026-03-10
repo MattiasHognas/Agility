@@ -13,6 +13,13 @@ stack build
 stack exec Agility -- +RTS -N
 ```
 
+### Navigate
+
+- `arrow keys` to navigate
+- `enter` to click a link
+- `tab` to switch between tables
+- `q` to quit
+
 ## Tables
 
 Tables are vertical by default. To place tables side by side, wrap them in an object with `tableWeights` and `tables`.
