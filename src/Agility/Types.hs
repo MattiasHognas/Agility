@@ -110,7 +110,7 @@ parseValidColor obj keyStr = do
   mValue <- obj .:? K.fromString keyStr
   case mValue of
     Nothing -> pure Nothing
-    Just value -> case parseConfigColor value of
+    Just value -> case parseColor value of
       Just _ -> pure (Just value)
       Nothing ->
         fail $
@@ -188,9 +188,12 @@ instance FromJSON LayoutItem where
         when (sum weights <= 0) $ fail "sum of tableWeights must be greater than 0"
         pure (HorizontalGroup weights cfgs)
 
-parseConfigColor :: String -> Maybe V.Color
-parseConfigColor value = parseNamedColor value <|> parseHexColor value
+parseColor :: String -> Maybe V.Color
+parseColor value = parseNamedColor value <|> parseHexColor value
 
+{-# DEPRECATED parseConfigColor "Use parseColor instead" #-}
+parseConfigColor :: String -> Maybe V.Color
+parseConfigColor = parseColor
 parseNamedColor :: String -> Maybe V.Color
 parseNamedColor value =
   case map toLower value of
