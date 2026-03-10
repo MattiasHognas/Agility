@@ -13,25 +13,17 @@ module Agility.State
   )
 where
 
-import Agility.Types
-  ( St
-      ( activeTableIndex,
-        colPositions,
-        rowPositions,
-        tableRowsData,
-        tables
-      ),
-  )
-import Data.Maybe (fromMaybe)
+import           Agility.Types (St (activeTableIndex, colPositions, rowPositions, tableRowsData, tables))
+import           Data.Maybe    (fromMaybe)
 
 safeIndex :: [a] -> Int -> Maybe a
 safeIndex xs idx
   | idx < 0 = Nothing
   | otherwise = go idx xs
   where
-    go 0 (y : _) = Just y
+    go 0 (y : _)  = Just y
     go n (_ : ys) = go (n - 1) ys
-    go _ [] = Nothing
+    go _ []       = Nothing
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt idx f xs
@@ -39,7 +31,7 @@ updateAt idx f xs
   | otherwise =
       case splitAt idx xs of
         (before, x : after) -> before ++ f x : after
-        _ -> xs
+        _                   -> xs
 
 clampIndex :: Int -> Int -> Int -> Int
 clampIndex lo hi value = max lo (min hi value)

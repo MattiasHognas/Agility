@@ -2,24 +2,18 @@
 
 module Agility.Types where
 
-import Control.Applicative ((<|>))
-import Control.Monad (when)
-import Data.Aeson
-  ( FromJSON (parseJSON),
-    Object,
-    Value (Object),
-    withObject,
-    (.!=),
-    (.:),
-    (.:?),
-  )
-import Data.Aeson.Key qualified as K
-import Data.Aeson.KeyMap qualified as KM
-import Data.Aeson.Types (Parser)
-import Data.Char (toLower)
-import GHC.Generics (Generic)
-import Graphics.Vty qualified as V
-import Numeric (readHex)
+import           Control.Applicative ((<|>))
+import           Control.Monad       (when)
+import           Data.Aeson          (FromJSON (parseJSON), Object,
+                                      Value (Object), withObject, (.!=), (.:),
+                                      (.:?))
+import qualified Data.Aeson.Key      as K
+import qualified Data.Aeson.KeyMap   as KM
+import           Data.Aeson.Types    (Parser)
+import           Data.Char           (toLower)
+import           GHC.Generics        (Generic)
+import qualified Graphics.Vty        as V
+import           Numeric             (readHex)
 
 data Name = CellName Int Int Int deriving (Eq, Ord, Show)
 
@@ -30,13 +24,13 @@ type Row = [Cell]
 data TableSource
   = StaticSource [[Cell]]
   | WebSource
-      { url :: String,
-        fields :: FieldMapping,
+      { url            :: String,
+        fields         :: FieldMapping,
         refreshSeconds :: Int
       }
   | LocalSource
-      { path :: FilePath,
-        fields :: FieldMapping,
+      { path           :: FilePath,
+        fields         :: FieldMapping,
         refreshSeconds :: Int
       }
   deriving (Show)
@@ -47,41 +41,41 @@ data FieldMapping = FieldMapping
   deriving (Show, Generic)
 
 data ColorConfig = ColorConfig
-  { textColor :: Maybe String,
-    borderColor :: Maybe String,
-    titleColor :: Maybe String,
-    headerColor :: Maybe String,
+  { textColor         :: Maybe String,
+    borderColor       :: Maybe String,
+    titleColor        :: Maybe String,
+    headerColor       :: Maybe String,
     selectedTextColor :: Maybe String,
-    selectedBgColor :: Maybe String
+    selectedBgColor   :: Maybe String
   }
   deriving (Show)
 
 data TableConfig = TableConfig
-  { title :: Maybe String,
-    columnHeaders :: Maybe [String],
-    columnWeights :: [Int],
+  { title           :: Maybe String,
+    columnHeaders   :: Maybe [String],
+    columnWeights   :: [Int],
     minColumnHeight :: Int,
     maxColumnHeight :: Int,
-    colors :: Maybe ColorConfig,
-    source :: TableSource
+    colors          :: Maybe ColorConfig,
+    source          :: TableSource
   }
   deriving (Show)
 
 data LayoutItem
   = TableItem TableConfig
   | HorizontalGroup
-      { tableWeights :: [Int],
+      { tableWeights  :: [Int],
         groupedTables :: [TableConfig]
       }
   deriving (Show)
 
 data St = St
   { activeTableIndex :: Int,
-    rowPositions :: [Int],
-    colPositions :: [Int],
-    dashboardItems :: [LayoutItem],
-    tables :: [TableConfig],
-    tableRowsData :: [[Row]],
+    rowPositions     :: [Int],
+    colPositions     :: [Int],
+    dashboardItems   :: [LayoutItem],
+    tables           :: [TableConfig],
+    tableRowsData    :: [[Row]],
     configGeneration :: Int
   }
   deriving (Show)
@@ -138,8 +132,8 @@ instance FromJSON TableSource where
       "static" -> do
         rawRows <- obj .: "rows"
         let parseCell [txt, mUrl] = (txt, Just mUrl)
-            parseCell [txt] = (txt, Nothing)
-            parseCell _ = ("", Nothing)
+            parseCell [txt]       = (txt, Nothing)
+            parseCell _           = ("", Nothing)
         pure $ StaticSource (map (map parseCell) rawRows)
       "web" -> do
         refresh <- parseRefreshSeconds obj
@@ -200,25 +194,25 @@ parseColor value = parseNamedColor value <|> parseHexColor value
 parseNamedColor :: String -> Maybe V.Color
 parseNamedColor value =
   case map toLower value of
-    "black" -> Just V.black
-    "red" -> Just V.red
-    "green" -> Just V.green
-    "yellow" -> Just V.yellow
-    "blue" -> Just V.blue
+    "black"   -> Just V.black
+    "red"     -> Just V.red
+    "green"   -> Just V.green
+    "yellow"  -> Just V.yellow
+    "blue"    -> Just V.blue
     "magenta" -> Just V.magenta
-    "cyan" -> Just V.cyan
-    "white" -> Just V.white
-    _ -> Nothing
+    "cyan"    -> Just V.cyan
+    "white"   -> Just V.white
+    _         -> Nothing
 
 parseHexColor :: String -> Maybe V.Color
 parseHexColor ('#' : xs)
   | length xs == 6 =
       case mapM parseHexByte [take 2 xs, take 2 (drop 2 xs), take 2 (drop 4 xs)] of
         Just [red, green, blue] -> Just (V.rgbColor red green blue)
-        _ -> Nothing
+        _                       -> Nothing
   where
     parseHexByte :: String -> Maybe Int
     parseHexByte hexValue = case readHex hexValue of
       [(n, "")] -> Just n
-      _ -> Nothing
+      _         -> Nothing
 parseHexColor _ = Nothing

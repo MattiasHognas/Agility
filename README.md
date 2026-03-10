@@ -2,15 +2,22 @@
 
 A dashboard for monitoring and visualizing data, built in Haskell.
 
-## Development
+## Run
 
 `+RTS` is just -rtsopts to allow runtime options.
 
-`-N` for multithreading, to fetch data from multiple sources concurrently.
+`-N` is for multithreading, to fetch data from multiple sources concurrently.
 
 ```bash
 stack build
 stack exec Agility -- +RTS -N
+```
+
+### Lint and formatting
+
+```bash
+stack install stylish-haskell
+stylish-haskell -i src/Agility/YOUR_FILE.hs
 ```
 
 ### Navigate

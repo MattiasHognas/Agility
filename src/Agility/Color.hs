@@ -11,10 +11,11 @@ module Agility.Color
   )
 where
 
-import Agility.Types (ColorConfig (..), TableConfig (..), parseColor)
-import Brick (AttrName, attrName, fg)
-import Control.Applicative ((<|>))
-import Graphics.Vty qualified as V
+import           Agility.Types       (ColorConfig (..), TableConfig (..),
+                                      parseColor)
+import           Brick               (AttrName, attrName, fg)
+import           Control.Applicative ((<|>))
+import qualified Graphics.Vty        as V
 
 textAttr :: Int -> AttrName
 textAttr idx = attrName ("table" ++ show idx ++ ".text")
@@ -60,6 +61,6 @@ tableAttrs cfgs =
             ( selectedTableAttr idx,
               case selFg <|> selBg of
                 Nothing -> fg V.yellow
-                Just _ -> mkAttr selFg selBg
+                Just _  -> mkAttr selFg selBg
             )
           ]

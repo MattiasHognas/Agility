@@ -4,41 +4,21 @@ module Agility.Interactive
   )
 where
 
-import Agility.Dashboard (flattenLayoutItems, initialRowsForLayout)
-import Agility.State
-  ( cellUrlAt,
-    cycleTable,
-    moveSelection,
-    normalizeSelection,
-    selectedCellUrl,
-    updateAt,
-  )
-import Agility.Types
-  ( AppEvent (..),
-    Name (..),
-    St
-      ( activeTableIndex,
-        colPositions,
-        configGeneration,
-        dashboardItems,
-        rowPositions,
-        tableRowsData,
-        tables
-      ),
-  )
-import Brick
-  ( BrickEvent (AppEvent, MouseDown, VtyEvent),
-    EventM,
-    gets,
-    halt,
-    modify,
-  )
-import Control.Exception (IOException, try)
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
-import Graphics.Vty qualified as V
-import System.Info (os)
-import System.Process (CreateProcess, createProcess, proc)
+import           Agility.Dashboard      (flattenLayoutItems,
+                                         initialRowsForLayout)
+import           Agility.State          (cellUrlAt, cycleTable, moveSelection,
+                                         normalizeSelection, selectedCellUrl,
+                                         updateAt)
+import           Agility.Types          (AppEvent (..), Name (..),
+                                         St (activeTableIndex, colPositions, configGeneration, dashboardItems, rowPositions, tableRowsData, tables))
+import           Brick                  (BrickEvent (AppEvent, MouseDown, VtyEvent),
+                                         EventM, gets, halt, modify)
+import           Control.Exception      (IOException, try)
+import           Control.Monad          (void)
+import           Control.Monad.IO.Class (liftIO)
+import qualified Graphics.Vty           as V
+import           System.Info            (os)
+import           System.Process         (CreateProcess, createProcess, proc)
 
 openUrl :: String -> IO Bool
 openUrl target = tryCommands (openCommands target)
@@ -58,7 +38,7 @@ tryCommands (command : rest) = do
   result <- try (void (createProcess command)) :: IO (Either IOException ())
   case result of
     Right () -> pure True
-    Left _ -> tryCommands rest
+    Left _   -> tryCommands rest
 
 handleEvent :: BrickEvent Name AppEvent -> EventM Name St ()
 handleEvent (AppEvent (UpdateTable idx rows gen)) =
@@ -90,7 +70,7 @@ handleEvent (VtyEvent (V.EvKey V.KEnter [])) = do
   st <- gets normalizeSelection
   case selectedCellUrl st of
     Just target -> void (liftIO (openUrl target))
-    Nothing -> pure ()
+    Nothing     -> pure ()
 handleEvent (MouseDown (CellName tableIdx rowIdx colIdx) V.BLeft _ _) = do
   modify $ \st ->
     let normalized = normalizeSelection st
@@ -103,6 +83,6 @@ handleEvent (MouseDown (CellName tableIdx rowIdx colIdx) V.BLeft _ _) = do
   st <- gets normalizeSelection
   case cellUrlAt st tableIdx rowIdx colIdx of
     Just target -> void (liftIO (openUrl target))
-    Nothing -> pure ()
+    Nothing     -> pure ()
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent _ = pure ()

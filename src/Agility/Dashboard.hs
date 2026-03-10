@@ -6,21 +6,18 @@ module Agility.Dashboard
   )
 where
 
-import Agility.Types
-  ( LayoutItem (HorizontalGroup, TableItem),
-    Row,
-    TableConfig (source),
-    TableSource (StaticSource),
-  )
+import           Agility.Types (LayoutItem (HorizontalGroup, TableItem), Row,
+                                TableConfig (source),
+                                TableSource (StaticSource))
 
 layoutItemCount :: LayoutItem -> Int
-layoutItemCount (TableItem _) = 1
+layoutItemCount (TableItem _)            = 1
 layoutItemCount (HorizontalGroup _ cfgs) = length cfgs
 
 flattenLayoutItems :: [LayoutItem] -> [TableConfig]
 flattenLayoutItems = concatMap flattenOne
   where
-    flattenOne (TableItem cfg) = [cfg]
+    flattenOne (TableItem cfg)          = [cfg]
     flattenOne (HorizontalGroup _ cfgs) = cfgs
 
 initialRowsForLayout :: [LayoutItem] -> [[Row]]
@@ -28,7 +25,7 @@ initialRowsForLayout = map rowsForTable . flattenLayoutItems
   where
     rowsForTable cfg = case source cfg of
       StaticSource rs -> rs
-      _ -> []
+      _               -> []
 
 distributeWidths :: Int -> [Int] -> [Int]
 distributeWidths total weights =

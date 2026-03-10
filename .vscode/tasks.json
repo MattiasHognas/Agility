@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GHCi: Agility executable",
+      "type": "shell",
+      "command": "stack",
+      "args": [
+        "ghci",
+        "Agility:exe:Agility"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "ghcid: Agility executable",
+      "type": "shell",
+      "command": "ghcid",
+      "args": [
+        "--command",
+        "stack ghci Agility:exe:Agility"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

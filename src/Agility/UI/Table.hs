@@ -3,47 +3,22 @@ module Agility.UI.Table
   )
 where
 
-import Agility.Color
-  ( borderAttr,
-    headerAttr,
-    linkAttr,
-    selectedTableAttr,
-    tableTitleAttr,
-    textAttr,
-  )
-import Agility.Dashboard (distributeWidths)
-import Agility.State (safeIndex)
-import Agility.Types
-  ( Name (..),
-    Row,
-    St (activeTableIndex, colPositions, rowPositions),
-    TableConfig
-      ( columnHeaders,
-        columnWeights,
-        maxColumnHeight,
-        minColumnHeight,
-        title
-      ),
-  )
-import Brick
-  ( Context (availWidth),
-    Padding (Pad),
-    Size (Fixed),
-    Widget (Widget, render),
-    clickable,
-    getContext,
-    hBox,
-    padRight,
-    padTop,
-    str,
-    vBox,
-    withAttr,
-    (<+>),
-  )
-import Brick.Widgets.Border (border)
-import Data.List (transpose, zipWith4)
-import Data.Maybe (fromMaybe, isJust)
-import Data.Text qualified as T
+import           Agility.Color        (borderAttr, headerAttr, linkAttr,
+                                       selectedTableAttr, tableTitleAttr,
+                                       textAttr)
+import           Agility.Dashboard    (distributeWidths)
+import           Agility.State        (safeIndex)
+import           Agility.Types        (Name (..), Row,
+                                       St (activeTableIndex, colPositions, rowPositions),
+                                       TableConfig (columnHeaders, columnWeights, maxColumnHeight, minColumnHeight, title))
+import           Brick                (Context (availWidth), Padding (Pad),
+                                       Size (Fixed), Widget (Widget, render),
+                                       clickable, getContext, hBox, padRight,
+                                       padTop, str, vBox, withAttr, (<+>))
+import           Brick.Widgets.Border (border)
+import           Data.List            (transpose, zipWith4)
+import           Data.Maybe           (fromMaybe, isJust)
+import qualified Data.Text            as T
 
 wrapOrTruncate :: Int -> Int -> String -> [String]
 wrapOrTruncate width maxHeight txt =
@@ -54,7 +29,7 @@ wrapOrTruncate width maxHeight txt =
           let prefix = take (maxHeight - 1) chunks
            in case drop (maxHeight - 1) chunks of
                 chunk : _ -> prefix ++ [take (width - 3) chunk ++ "..."]
-                [] -> prefix
+                []        -> prefix
 
 padCells :: Int -> [[String]] -> [[String]]
 padCells height = map (\xs -> xs ++ replicate (height - length xs) "")
@@ -69,7 +44,7 @@ drawTable st idx cfg rows = Widget Fixed Fixed $ do
       selCol = if activeTableIndex st == idx then fromMaybe (-1) (safeIndex (colPositions st) idx) else -1
       headerWidgets = case columnHeaders cfg of
         Just headers -> [drawHeaderRow idx colWs headers, drawBorder idx colWs]
-        Nothing -> []
+        Nothing      -> []
       tableLines = concatMap (drawRow idx colWs (minColumnHeight cfg) (maxColumnHeight cfg) selRow selCol) (zip [0 ..] rows)
       allLines = headerWidgets ++ tableLines
       titled widget = case title cfg of

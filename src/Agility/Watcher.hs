@@ -5,20 +5,19 @@ module Agility.Watcher
   )
 where
 
-import Agility.Config (decodeLayoutConfig)
-import Agility.Dashboard (flattenLayoutItems)
-import Agility.DataSource (fetchLocalRows, fetchWebRows, safeGetModificationTime)
-import Agility.Types
-  ( AppEvent (..),
-    LayoutItem,
-    TableConfig (source),
-    TableSource (LocalSource, WebSource),
-  )
-import Brick.BChan (BChan, writeBChan)
-import Control.Concurrent (MVar, ThreadId, forkIO, killThread, swapMVar, threadDelay)
-import Control.Exception (IOException, try)
-import Control.Monad (forever, void)
-import Data.ByteString.Lazy qualified as B
+import           Agility.Config       (decodeLayoutConfig)
+import           Agility.Dashboard    (flattenLayoutItems)
+import           Agility.DataSource   (fetchLocalRows, fetchWebRows,
+                                       safeGetModificationTime)
+import           Agility.Types        (AppEvent (..), LayoutItem,
+                                       TableConfig (source),
+                                       TableSource (LocalSource, WebSource))
+import           Brick.BChan          (BChan, writeBChan)
+import           Control.Concurrent   (MVar, ThreadId, forkIO, killThread,
+                                       swapMVar, threadDelay)
+import           Control.Exception    (IOException, try)
+import           Control.Monad        (forever, void)
+import qualified Data.ByteString.Lazy as B
 
 refreshSourcesForLayout :: [LayoutItem] -> [(Int, TableSource)]
 refreshSourcesForLayout items = zip [0 ..] (map source (flattenLayoutItems items))

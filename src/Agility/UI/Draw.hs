@@ -4,38 +4,24 @@ module Agility.UI.Draw
   )
 where
 
-import Agility.Color (tableAttrs)
-import Agility.Dashboard (distributeWidths, layoutItemCount)
-import Agility.Interactive qualified as Interactive
-import Agility.State (safeIndex)
-import Agility.Types
-  ( AppEvent,
-    LayoutItem (HorizontalGroup, TableItem),
-    Name,
-    Row,
-    St (dashboardItems, tableRowsData, tables),
-  )
-import Agility.UI.Table (drawTable)
-import Brick
-  ( App (..),
-    Context (availWidth),
-    Padding (Pad),
-    Size (Fixed, Greedy),
-    Widget (Widget, render),
-    attrMap,
-    emptyWidget,
-    getContext,
-    hBox,
-    hLimit,
-    neverShowCursor,
-    padTop,
-    str,
-    vBox,
-  )
-import Brick.Widgets.Center (center)
-import Data.List (intersperse)
-import Data.Maybe (fromMaybe)
-import Graphics.Vty qualified as V
+import           Agility.Color        (tableAttrs)
+import           Agility.Dashboard    (distributeWidths, layoutItemCount)
+import qualified Agility.Interactive  as Interactive
+import           Agility.State        (safeIndex)
+import           Agility.Types        (AppEvent,
+                                       LayoutItem (HorizontalGroup, TableItem),
+                                       Name, Row,
+                                       St (dashboardItems, tableRowsData, tables))
+import           Agility.UI.Table     (drawTable)
+import           Brick                (App (..), Context (availWidth),
+                                       Padding (Pad), Size (Fixed, Greedy),
+                                       Widget (Widget, render), attrMap,
+                                       emptyWidget, getContext, hBox, hLimit,
+                                       neverShowCursor, padTop, str, vBox)
+import           Brick.Widgets.Center (center)
+import           Data.List            (intersperse)
+import           Data.Maybe           (fromMaybe)
+import qualified Graphics.Vty         as V
 
 drawUI :: St -> [Widget Name]
 drawUI st = [center $ layoutItemsWidget st (dashboardItems st) 0]

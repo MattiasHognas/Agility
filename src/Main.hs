@@ -2,20 +2,22 @@
 
 module Main where
 
-import Agility.Config (decodeLayoutConfig)
-import Agility.Dashboard (flattenLayoutItems, initialRowsForLayout)
-import Agility.State (normalizeSelection)
-import Agility.Types (St (..))
-import Agility.UI.Draw (app)
-import Agility.Watcher (refreshSourcesForLayout, startSourceThreads, watchConfig)
-import Brick (customMain)
-import Brick.BChan (newBChan)
-import Control.Concurrent (forkIO, newMVar)
-import Control.Exception (IOException, try)
-import Control.Monad (void)
-import Data.ByteString.Lazy qualified as B
-import Graphics.Vty qualified as V
-import Graphics.Vty.CrossPlatform qualified as VCross
+import           Agility.Config             (decodeLayoutConfig)
+import           Agility.Dashboard          (flattenLayoutItems,
+                                             initialRowsForLayout)
+import           Agility.State              (normalizeSelection)
+import           Agility.Types              (St (..))
+import           Agility.UI.Draw            (app)
+import           Agility.Watcher            (refreshSourcesForLayout,
+                                             startSourceThreads, watchConfig)
+import           Brick                      (customMain)
+import           Brick.BChan                (newBChan)
+import           Control.Concurrent         (forkIO, newMVar)
+import           Control.Exception          (IOException, try)
+import           Control.Monad              (void)
+import qualified Data.ByteString.Lazy       as B
+import qualified Graphics.Vty               as V
+import qualified Graphics.Vty.CrossPlatform as VCross
 
 main :: IO ()
 main = do
