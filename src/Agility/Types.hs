@@ -182,6 +182,8 @@ instance FromJSON LayoutItem where
         cfgs <- obj .: "tables"
         when (null cfgs) $ fail "horizontal group must include at least one table"
         when (length weights /= length cfgs) $ fail "tableWeights must match the number of tables"
+        when (any (<= 0) weights) $ fail "tableWeights must contain only positive values"
+        when (sum weights <= 0) $ fail "sum of tableWeights must be greater than 0"
         pure (HorizontalGroup weights cfgs)
 
 parseConfigColor :: String -> Maybe V.Color
