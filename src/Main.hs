@@ -31,7 +31,7 @@ main = do
           chan <- newBChan 10
           let flatTables = flattenLayoutItems layoutCfgs
               refreshSources = refreshSourcesForLayout layoutCfgs
-          initialSourceThreadIds <- startSourceThreads refreshSources chan
+          initialSourceThreadIds <- startSourceThreads 0 refreshSources chan
           sourceThreadIds <- newMVar initialSourceThreadIds
           void $ forkIO $ watchConfig cfgFile chan sourceThreadIds
           let rows = initialRowsForLayout layoutCfgs
@@ -43,6 +43,7 @@ main = do
                   layoutCfgs
                   flatTables
                   rows
+                  0
               buildVty = do
                 vty <- VCross.mkVty V.defaultConfig
                 V.setMode (V.outputIface vty) V.Mouse True
