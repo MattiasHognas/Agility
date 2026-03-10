@@ -111,7 +111,7 @@ parseValidColor obj keyStr = do
   mValue <- obj .:? K.fromString keyStr
   case mValue of
     Nothing -> pure Nothing
-    Just value -> case parseConfigColor value of
+    Just value -> case parseColor value of
       Just _ -> pure (Just value)
       Nothing ->
         fail $
@@ -141,36 +141,43 @@ instance FromJSON TableSource where
             parseCell [txt] = (txt, Nothing)
             parseCell _ = ("", Nothing)
         pure $ StaticSource (map (map parseCell) rawRows)
-      "web" ->
+      "web" -> do
+        refresh <- parseRefreshSeconds obj
         WebSource
           <$> obj .: "url"
           <*> obj .: "fields"
-          <*> obj .:? "refreshSeconds" .!= 5
-      "local" ->
+          <*> pure refresh
+      "local" -> do
+        refresh <- parseRefreshSeconds obj
         LocalSource
           <$> obj .: "path"
           <*> obj .: "fields"
-          <*> obj .:? "refreshSeconds" .!= 5
+          <*> pure refresh
       _ -> fail "Unknown source type"
+
+parseRefreshSeconds :: Object -> Parser Int
+parseRefreshSeconds obj = do
+  refresh <- obj .:? "refreshSeconds" .!= 5
+  when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
+  pure refresh
 
 instance FromJSON TableConfig where
   parseJSON = withObject "TableConfig" $ \obj -> do
     minH <- obj .:? "minColumnHeight" .!= 1
     maxH <- obj .:? "maxColumnHeight" .!= minH
-    if minH < 1
-      then fail "minColumnHeight must be at least 1"
-      else
-        if maxH < minH
-          then fail "maxColumnHeight must be greater than or equal to minColumnHeight"
-          else
-            TableConfig
-              <$> obj .:? "title"
-              <*> obj .:? "columnHeaders"
-              <*> obj .: "columnWeights"
-              <*> pure minH
-              <*> pure maxH
-              <*> obj .:? "colors"
-              <*> obj .: "source"
+    when (minH < 1) $ fail "minColumnHeight must be at least 1"
+    when (maxH < minH) $ fail "maxColumnHeight must be greater than or equal to minColumnHeight"
+    weights <- obj .: "columnWeights"
+    when (null weights) $ fail "columnWeights must not be empty"
+    when (any (<= 0) weights) $ fail "all columnWeights must be positive (greater than 0)"
+    TableConfig
+      <$> obj .:? "title"
+      <*> obj .:? "columnHeaders"
+      <*> pure weights
+      <*> pure minH
+      <*> pure maxH
+      <*> obj .:? "colors"
+      <*> obj .: "source"
 
 instance FromJSON LayoutItem where
   parseJSON = withObject "LayoutItem" $ \obj ->
@@ -180,15 +187,19 @@ instance FromJSON LayoutItem where
     where
       parseGroup obj = do
         weights <- obj .: "tableWeights"
+        when (null weights) $ fail "tableWeights must not be empty"
+        when (any (<= 0) weights) $ fail "all tableWeights must be positive (greater than 0)"
         cfgs <- obj .: "tables"
         when (null cfgs) $ fail "horizontal group must include at least one table"
         when (length weights /= length cfgs) $ fail "tableWeights must match the number of tables"
-        when (any (<= 0) weights) $ fail "tableWeights must contain only positive values"
-        when (sum weights <= 0) $ fail "sum of tableWeights must be greater than 0"
         pure (HorizontalGroup weights cfgs)
 
+parseColor :: String -> Maybe V.Color
+parseColor value = parseNamedColor value <|> parseHexColor value
+
+{-# DEPRECATED parseConfigColor "Use parseColor instead" #-}
 parseConfigColor :: String -> Maybe V.Color
-parseConfigColor value = parseNamedColor value <|> parseHexColor value
+parseConfigColor = parseColor
 
 parseNamedColor :: String -> Maybe V.Color
 parseNamedColor value =

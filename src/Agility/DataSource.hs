@@ -7,7 +7,7 @@ module Agility.DataSource
 where
 
 import Agility.Types (FieldMapping (fieldNames), Row)
-import Control.Exception (IOException, try)
+import Control.Exception (IOException, SomeAsyncException, SomeException, catch, fromException, throwIO, try)
 import Data.Aeson (Object, Value (..), eitherDecode)
 import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
@@ -39,10 +39,18 @@ decodeRows payload fm =
     Left _ -> []
 
 fetchWebRows :: String -> FieldMapping -> IO [Row]
-fetchWebRows endpoint fm = do
-  req <- parseRequest endpoint
-  resp <- httpLBS req
-  pure (decodeRows (getResponseBody resp) fm)
+fetchWebRows endpoint fm =
+  -- Catch synchronous exceptions (HttpException, InvalidUrlException, IOException, etc.)
+  -- but rethrow async exceptions (e.g. ThreadKilled) so killThread still works.
+  go `catch` \e ->
+    case fromException e :: Maybe SomeAsyncException of
+      Just _ -> throwIO e
+      Nothing -> pure []
+  where
+    go = do
+      req <- parseRequest endpoint
+      resp <- httpLBS req
+      pure (decodeRows (getResponseBody resp) fm)
 
 fetchLocalRows :: FilePath -> FieldMapping -> IO [Row]
 fetchLocalRows sourcePath fm = do

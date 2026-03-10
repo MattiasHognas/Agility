@@ -16,9 +16,9 @@ import Agility.Types
   )
 import Brick.BChan (BChan, writeBChan)
 import Control.Concurrent (MVar, ThreadId, forkIO, killThread, swapMVar, threadDelay)
+import Control.Exception (IOException, try)
 import Control.Monad (forever, void)
 import Data.ByteString.Lazy qualified as B
-import System.Directory (getModificationTime)
 
 refreshSourcesForLayout :: [LayoutItem] -> [(Int, TableSource)]
 refreshSourcesForLayout items = zip [0 ..] (map source (flattenLayoutItems items))
@@ -65,25 +65,30 @@ startSourceThreads gen sources chan = fmap catMaybes (mapM forkSource sources)
 
 watchConfig :: FilePath -> BChan AppEvent -> MVar [ThreadId] -> IO ()
 watchConfig configPath chan sourceThreadIds = do
-  initialMod <- getModificationTime configPath
+  initialMod <- safeGetModificationTime configPath
   loop initialMod 0
   where
     loop lastMod currentGen = do
       threadDelay 2000000
-      newMod <- getModificationTime configPath
+      newMod <- safeGetModificationTime configPath
       (nextMod, nextGen) <-
         if newMod > lastMod
           then do
-            content <- B.readFile configPath
-            case decodeLayoutConfig content of
-              Right cfg -> do
-                let newGen = currentGen + 1
-                restartSourceThreads cfg newGen
-                writeBChan chan (ReloadConfig cfg)
-                pure (newMod, newGen)
+            result <- try (B.readFile configPath) :: IO (Either IOException B.ByteString)
+            case result of
               Left err -> do
-                putStrLn $ "JSON parse error: " ++ err
+                putStrLn $ "Config file read error: " ++ show err
                 pure (lastMod, currentGen)
+              Right content ->
+                case decodeLayoutConfig content of
+                  Right cfg -> do
+                    let newGen = currentGen + 1
+                    restartSourceThreads cfg newGen
+                    writeBChan chan (ReloadConfig cfg)
+                    pure (newMod, newGen)
+                  Left err -> do
+                    putStrLn $ "JSON parse error: " ++ err
+                    pure (lastMod, currentGen)
           else pure (lastMod, currentGen)
       loop nextMod nextGen
 
