@@ -37,16 +37,27 @@ import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Graphics.Vty qualified as V
 import System.Info (os)
-import System.Process (createProcess, proc)
+import System.Process (CreateProcess, createProcess, proc)
 
 openUrl :: String -> IO Bool
-openUrl target = do
-  let command = case os of
-        "mingw32" -> proc "powershell.exe" ["-NoProfile", "-Command", "Start-Process", target]
-        "darwin" -> proc "open" [target]
-        _ -> proc "xdg-open" [target]
+openUrl target = tryCommands (openCommands target)
+
+openCommands :: String -> [CreateProcess]
+openCommands target = case os of
+  "mingw32" ->
+    [ proc "explorer.exe" [target],
+      proc "cmd.exe" ["/c", "start", "", target]
+    ]
+  "darwin" -> [proc "open" [target]]
+  _ -> [proc "xdg-open" [target]]
+
+tryCommands :: [CreateProcess] -> IO Bool
+tryCommands [] = pure False
+tryCommands (command : rest) = do
   result <- try (void (createProcess command)) :: IO (Either IOException ())
-  pure (either (const False) (const True) result)
+  case result of
+    Right () -> pure True
+    Left _ -> tryCommands rest
 
 handleEvent :: BrickEvent Name AppEvent -> EventM Name St ()
 handleEvent (AppEvent (UpdateTable idx rows)) =
