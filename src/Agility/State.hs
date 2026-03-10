@@ -14,6 +14,14 @@ module Agility.State
 where
 
 import Agility.Types
+  ( St
+      ( activeTableIndex,
+        colPositions,
+        rowPositions,
+        tableRowsData,
+        tables
+      ),
+  )
 
 safeIndex :: [a] -> Int -> Maybe a
 safeIndex xs idx

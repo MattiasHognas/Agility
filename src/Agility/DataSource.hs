@@ -6,7 +6,7 @@ module Agility.DataSource
   )
 where
 
-import Agility.Types
+import Agility.Types (FieldMapping (fieldNames), Row)
 import Control.Exception (IOException, try)
 import Data.Aeson (Object, Value (..), eitherDecode)
 import Data.Aeson.Key qualified as K

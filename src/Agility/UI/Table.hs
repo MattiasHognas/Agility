@@ -4,11 +4,43 @@ module Agility.UI.Table
 where
 
 import Agility.Color
+  ( borderAttr,
+    headerAttr,
+    linkAttr,
+    selectedTableAttr,
+    tableTitleAttr,
+    textAttr,
+  )
 import Agility.Dashboard (distributeWidths)
 import Agility.State (safeIndex)
 import Agility.Types
-import Brick hiding (Horizontal, Vertical, txt)
-import Brick.Widgets.Border hiding (borderAttr)
+  ( Name (..),
+    Row,
+    St (activeTableIndex, colPositions, rowPositions),
+    TableConfig
+      ( columnHeaders,
+        columnWeights,
+        maxColumnHeight,
+        minColumnHeight,
+        title
+      ),
+  )
+import Brick
+  ( Context (availWidth),
+    Padding (Pad),
+    Size (Fixed),
+    Widget (Widget, render),
+    clickable,
+    getContext,
+    hBox,
+    padRight,
+    padTop,
+    str,
+    vBox,
+    withAttr,
+    (<+>),
+  )
+import Brick.Widgets.Border (border)
 import Data.List (transpose, zipWith4)
 import Data.Text qualified as T
 

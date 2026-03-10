@@ -7,6 +7,11 @@ module Agility.Dashboard
 where
 
 import Agility.Types
+  ( LayoutItem (HorizontalGroup, TableItem),
+    Row,
+    TableConfig (source),
+    TableSource (StaticSource),
+  )
 
 layoutItemCount :: LayoutItem -> Int
 layoutItemCount (TableItem _) = 1

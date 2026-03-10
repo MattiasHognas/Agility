@@ -6,8 +6,32 @@ where
 
 import Agility.Dashboard (flattenLayoutItems, initialRowsForLayout)
 import Agility.State
+  ( cellUrlAt,
+    cycleTable,
+    moveSelection,
+    normalizeSelection,
+    selectedCellUrl,
+    updateAt,
+  )
 import Agility.Types
+  ( AppEvent (..),
+    Name (..),
+    St
+      ( activeTableIndex,
+        colPositions,
+        dashboardItems,
+        rowPositions,
+        tableRowsData,
+        tables
+      ),
+  )
 import Brick
+  ( BrickEvent (AppEvent, MouseDown, VtyEvent),
+    EventM,
+    gets,
+    halt,
+    modify,
+  )
 import Control.Exception (IOException, try)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)

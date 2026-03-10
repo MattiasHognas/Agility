@@ -9,8 +9,29 @@ import Agility.Dashboard (distributeWidths, layoutItemCount)
 import Agility.Interactive qualified as Interactive
 import Agility.State (safeIndex)
 import Agility.Types
+  ( AppEvent,
+    LayoutItem (HorizontalGroup, TableItem),
+    Name,
+    Row,
+    St (dashboardItems, tableRowsData, tables),
+  )
 import Agility.UI.Table (drawTable)
-import Brick hiding (Horizontal, Vertical, txt)
+import Brick
+  ( App (..),
+    Context (availWidth),
+    Padding (Pad),
+    Size (Fixed, Greedy),
+    Widget (Widget, render),
+    attrMap,
+    emptyWidget,
+    getContext,
+    hBox,
+    hLimit,
+    neverShowCursor,
+    padTop,
+    str,
+    vBox,
+  )
 import Brick.Widgets.Center (center)
 import Data.List (intersperse)
 import Graphics.Vty qualified as V
