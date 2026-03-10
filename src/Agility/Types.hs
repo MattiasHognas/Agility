@@ -141,20 +141,24 @@ instance FromJSON TableSource where
             parseCell _ = ("", Nothing)
         pure $ StaticSource (map (map parseCell) rawRows)
       "web" -> do
-        refresh <- obj .:? "refreshSeconds" .!= 5
-        when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
+        refresh <- parseRefreshSeconds obj
         WebSource
           <$> obj .: "url"
           <*> obj .: "fields"
           <*> pure refresh
       "local" -> do
-        refresh <- obj .:? "refreshSeconds" .!= 5
-        when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
+        refresh <- parseRefreshSeconds obj
         LocalSource
           <$> obj .: "path"
           <*> obj .: "fields"
           <*> pure refresh
       _ -> fail "Unknown source type"
+
+parseRefreshSeconds :: Object -> Parser Int
+parseRefreshSeconds obj = do
+  refresh <- obj .:? "refreshSeconds" .!= 5
+  when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
+  pure refresh
 
 instance FromJSON TableConfig where
   parseJSON = withObject "TableConfig" $ \obj -> do
@@ -182,6 +186,8 @@ instance FromJSON LayoutItem where
     where
       parseGroup obj = do
         weights <- obj .: "tableWeights"
+        when (null weights) $ fail "tableWeights must not be empty"
+        when (any (<= 0) weights) $ fail "all tableWeights must be positive (greater than 0)"
         cfgs <- obj .: "tables"
         when (null cfgs) $ fail "horizontal group must include at least one table"
         when (length weights /= length cfgs) $ fail "tableWeights must match the number of tables"
