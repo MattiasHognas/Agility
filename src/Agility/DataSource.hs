@@ -7,7 +7,7 @@ module Agility.DataSource
 where
 
 import Agility.Types (FieldMapping (fieldNames), Row)
-import Control.Exception (IOException, try)
+import Control.Exception (IOException, SomeException, try)
 import Data.Aeson (Object, Value (..), eitherDecode)
 import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
@@ -40,9 +40,15 @@ decodeRows payload fm =
 
 fetchWebRows :: String -> FieldMapping -> IO [Row]
 fetchWebRows endpoint fm = do
-  req <- parseRequest endpoint
-  resp <- httpLBS req
-  pure (decodeRows (getResponseBody resp) fm)
+  -- Catch all exceptions (HttpException, InvalidUrlException, IOException, etc.)
+  -- so a transient network failure doesn't terminate the watcher thread.
+  result <- try go :: IO (Either SomeException [Row])
+  pure $ either (const []) id result
+  where
+    go = do
+      req <- parseRequest endpoint
+      resp <- httpLBS req
+      pure (decodeRows (getResponseBody resp) fm)
 
 fetchLocalRows :: FilePath -> FieldMapping -> IO [Row]
 fetchLocalRows sourcePath fm = do
