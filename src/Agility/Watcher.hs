@@ -83,8 +83,8 @@ watchConfig configPath chan sourceThreadIds = do
                 case decodeLayoutConfig content of
                   Right cfg -> do
                     let newGen = currentGen + 1
-                    restartSourceThreads cfg newGen
                     writeBChan chan (ReloadConfig cfg)
+                    restartSourceThreads cfg newGen
                     pure (newMod, newGen)
                   Left err -> do
                     putStrLn $ "JSON parse error: " ++ err
