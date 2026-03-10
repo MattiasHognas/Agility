@@ -140,36 +140,39 @@ instance FromJSON TableSource where
             parseCell [txt] = (txt, Nothing)
             parseCell _ = ("", Nothing)
         pure $ StaticSource (map (map parseCell) rawRows)
-      "web" ->
+      "web" -> do
+        refresh <- obj .:? "refreshSeconds" .!= 5
+        when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
         WebSource
           <$> obj .: "url"
           <*> obj .: "fields"
-          <*> obj .:? "refreshSeconds" .!= 5
-      "local" ->
+          <*> pure refresh
+      "local" -> do
+        refresh <- obj .:? "refreshSeconds" .!= 5
+        when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
         LocalSource
           <$> obj .: "path"
           <*> obj .: "fields"
-          <*> obj .:? "refreshSeconds" .!= 5
+          <*> pure refresh
       _ -> fail "Unknown source type"
 
 instance FromJSON TableConfig where
   parseJSON = withObject "TableConfig" $ \obj -> do
     minH <- obj .:? "minColumnHeight" .!= 1
     maxH <- obj .:? "maxColumnHeight" .!= minH
-    if minH < 1
-      then fail "minColumnHeight must be at least 1"
-      else
-        if maxH < minH
-          then fail "maxColumnHeight must be greater than or equal to minColumnHeight"
-          else
-            TableConfig
-              <$> obj .:? "title"
-              <*> obj .:? "columnHeaders"
-              <*> obj .: "columnWeights"
-              <*> pure minH
-              <*> pure maxH
-              <*> obj .:? "colors"
-              <*> obj .: "source"
+    when (minH < 1) $ fail "minColumnHeight must be at least 1"
+    when (maxH < minH) $ fail "maxColumnHeight must be greater than or equal to minColumnHeight"
+    weights <- obj .: "columnWeights"
+    when (null weights) $ fail "columnWeights must not be empty"
+    when (any (<= 0) weights) $ fail "all columnWeights must be positive (greater than 0)"
+    TableConfig
+      <$> obj .:? "title"
+      <*> obj .:? "columnHeaders"
+      <*> pure weights
+      <*> pure minH
+      <*> pure maxH
+      <*> obj .:? "colors"
+      <*> obj .: "source"
 
 instance FromJSON LayoutItem where
   parseJSON = withObject "LayoutItem" $ \obj ->
