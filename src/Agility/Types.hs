@@ -81,12 +81,13 @@ data St = St
     colPositions :: [Int],
     dashboardItems :: [LayoutItem],
     tables :: [TableConfig],
-    tableRowsData :: [[Row]]
+    tableRowsData :: [[Row]],
+    configGeneration :: Int
   }
   deriving (Show)
 
 data AppEvent
-  = UpdateTable Int [Row]
+  = UpdateTable Int [Row] Int
   | ReloadConfig [LayoutItem]
   deriving (Show)
 

@@ -19,6 +19,7 @@ import Agility.Types
     St
       ( activeTableIndex,
         colPositions,
+        configGeneration,
         dashboardItems,
         rowPositions,
         tableRowsData,
@@ -60,9 +61,11 @@ tryCommands (command : rest) = do
     Left _ -> tryCommands rest
 
 handleEvent :: BrickEvent Name AppEvent -> EventM Name St ()
-handleEvent (AppEvent (UpdateTable idx rows)) =
+handleEvent (AppEvent (UpdateTable idx rows gen)) =
   modify $ \st ->
-    normalizeSelection st {tableRowsData = updateAt idx (const rows) (tableRowsData st)}
+    if gen == configGeneration st
+      then normalizeSelection st {tableRowsData = updateAt idx (const rows) (tableRowsData st)}
+      else st
 handleEvent (AppEvent (ReloadConfig cfgs)) =
   let flatTables = flattenLayoutItems cfgs
       rows = initialRowsForLayout cfgs
@@ -74,7 +77,8 @@ handleEvent (AppEvent (ReloadConfig cfgs)) =
               tableRowsData = rows,
               rowPositions = replicate (length flatTables) 0,
               colPositions = replicate (length flatTables) 0,
-              activeTableIndex = 0
+              activeTableIndex = 0,
+              configGeneration = configGeneration st + 1
             }
 handleEvent (VtyEvent (V.EvKey V.KLeft [])) = modify (moveSelection 0 (-1))
 handleEvent (VtyEvent (V.EvKey V.KRight [])) = modify (moveSelection 0 1)
