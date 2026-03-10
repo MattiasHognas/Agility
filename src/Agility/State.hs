@@ -22,11 +22,16 @@ import Agility.Types
         tables
       ),
   )
+import Data.Maybe (fromMaybe)
 
 safeIndex :: [a] -> Int -> Maybe a
 safeIndex xs idx
-  | idx < 0 || idx >= length xs = Nothing
-  | otherwise = Just (xs !! idx)
+  | idx < 0 = Nothing
+  | otherwise = go idx xs
+  where
+    go 0 (y : _) = Just y
+    go n (_ : ys) = go (n - 1) ys
+    go _ [] = Nothing
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt idx f xs
@@ -77,11 +82,11 @@ moveSelection dRow dCol st =
       tableIdx = activeTableIndex normalized
       rows = rowPositions normalized
       cols = colPositions normalized
-      currentRow = rows !! tableIdx
+      currentRow = fromMaybe 0 (safeIndex rows tableIdx)
       nextRowMax = rowCount normalized tableIdx - 1
       nextRow = if nextRowMax < 0 then 0 else clampIndex 0 nextRowMax (currentRow + dRow)
       nextColMax = colCount normalized tableIdx nextRow - 1
-      currentCol = cols !! tableIdx
+      currentCol = fromMaybe 0 (safeIndex cols tableIdx)
       nextCol = if nextColMax < 0 then 0 else clampIndex 0 nextColMax (currentCol + dCol)
    in normalized
         { rowPositions = updateAt tableIdx (const nextRow) rows,
@@ -106,7 +111,7 @@ cellUrlAt st tableIdx rowIdx colIdx = do
 
 selectedCellUrl :: St -> Maybe String
 selectedCellUrl st = do
-  normalized <- Just (normalizeSelection st)
+  let normalized = normalizeSelection st
   let tableIdx = activeTableIndex normalized
   rowIdx <- safeIndex (rowPositions normalized) tableIdx
   colIdx <- safeIndex (colPositions normalized) tableIdx

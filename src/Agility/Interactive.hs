@@ -93,12 +93,13 @@ handleEvent (VtyEvent (V.EvKey V.KEnter [])) = do
     Nothing -> pure ()
 handleEvent (MouseDown (CellName tableIdx rowIdx colIdx) V.BLeft _ _) = do
   modify $ \st ->
-    normalizeSelection
-      st
-        { activeTableIndex = tableIdx,
-          rowPositions = updateAt tableIdx (const rowIdx) (rowPositions (normalizeSelection st)),
-          colPositions = updateAt tableIdx (const colIdx) (colPositions (normalizeSelection st))
-        }
+    let normalized = normalizeSelection st
+     in normalizeSelection
+          normalized
+            { activeTableIndex = tableIdx,
+              rowPositions = updateAt tableIdx (const rowIdx) (rowPositions normalized),
+              colPositions = updateAt tableIdx (const colIdx) (colPositions normalized)
+            }
   st <- gets normalizeSelection
   case cellUrlAt st tableIdx rowIdx colIdx of
     Just target -> void (liftIO (openUrl target))

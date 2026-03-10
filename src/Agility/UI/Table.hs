@@ -42,6 +42,7 @@ import Brick
   )
 import Brick.Widgets.Border (border)
 import Data.List (transpose, zipWith4)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Text qualified as T
 
 wrapOrTruncate :: Int -> Int -> String -> [String]
@@ -49,7 +50,11 @@ wrapOrTruncate width maxHeight txt =
   let chunks = map T.unpack $ T.chunksOf width (T.pack txt)
    in if length chunks <= maxHeight
         then chunks
-        else take (maxHeight - 1) chunks ++ [take (width - 3) (chunks !! (maxHeight - 1)) ++ "..."]
+        else
+          let prefix = take (maxHeight - 1) chunks
+           in case drop (maxHeight - 1) chunks of
+                chunk : _ -> prefix ++ [take (width - 3) chunk ++ "..."]
+                [] -> prefix
 
 padCells :: Int -> [[String]] -> [[String]]
 padCells height = map (\xs -> xs ++ replicate (height - length xs) "")
@@ -60,8 +65,8 @@ drawTable st idx cfg rows = Widget Fixed Fixed $ do
   let avail = availWidth ctx
       chromeWidth = length (columnWeights cfg) * 3
       colWs = distributeWidths (max 1 (avail - chromeWidth)) (columnWeights cfg)
-      selRow = if activeTableIndex st == idx then rowPositions st !! idx else -1
-      selCol = if activeTableIndex st == idx then colPositions st !! idx else -1
+      selRow = if activeTableIndex st == idx then fromMaybe (-1) (safeIndex (rowPositions st) idx) else -1
+      selCol = if activeTableIndex st == idx then fromMaybe (-1) (safeIndex (colPositions st) idx) else -1
       headerWidgets = case columnHeaders cfg of
         Just headers -> [drawHeaderRow idx colWs headers, drawBorder idx colWs]
         Nothing -> []
@@ -109,7 +114,7 @@ drawSpacerLine widths =
 drawCell :: Int -> Int -> Row -> Int -> Int -> Int -> String -> Int -> Int -> Widget Name
 drawCell tableIdx rowIdx row selRow selCol colIdx txt width _ =
   let isSel = rowIdx == selRow && colIdx == selCol
-      hasLink = maybe False ((/= Nothing) . snd) (safeIndex row colIdx)
+      hasLink = maybe False (isJust . snd) (safeIndex row colIdx)
       attr
         | isSel = selectedTableAttr tableIdx
         | hasLink = linkAttr tableIdx

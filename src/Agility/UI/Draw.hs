@@ -34,6 +34,7 @@ import Brick
   )
 import Brick.Widgets.Center (center)
 import Data.List (intersperse)
+import Data.Maybe (fromMaybe)
 import Graphics.Vty qualified as V
 
 drawUI :: St -> [Widget Name]
@@ -64,7 +65,7 @@ drawLayoutItem st (HorizontalGroup weights cfgs) idx = Widget Greedy Fixed $ do
   render $ hBox (intersperse (str "  ") tableWidgets)
 
 tableRowsAt :: St -> Int -> [Row]
-tableRowsAt st idx = maybe [] id (safeIndex (tableRowsData st) idx)
+tableRowsAt st idx = fromMaybe [] (safeIndex (tableRowsData st) idx)
 
 app :: App St AppEvent Name
 app =
