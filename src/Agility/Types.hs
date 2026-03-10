@@ -204,6 +204,7 @@ parseColor value = parseNamedColor value <|> parseHexColor value
 {-# DEPRECATED parseConfigColor "Use parseColor instead" #-}
 parseConfigColor :: String -> Maybe V.Color
 parseConfigColor = parseColor
+
 parseNamedColor :: String -> Maybe V.Color
 parseNamedColor value =
   case map toLower value of

@@ -32,8 +32,9 @@ updateAt :: Int -> (a -> a) -> [a] -> [a]
 updateAt idx f xs
   | idx < 0 || idx >= length xs = xs
   | otherwise =
-      let (before, x : after) = splitAt idx xs
-       in before ++ f x : after
+      case splitAt idx xs of
+        (before, x : after) -> before ++ f x : after
+        _ -> xs
 
 clampIndex :: Int -> Int -> Int -> Int
 clampIndex lo hi value = max lo (min hi value)

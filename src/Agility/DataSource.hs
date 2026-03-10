@@ -7,7 +7,7 @@ module Agility.DataSource
 where
 
 import Agility.Types (FieldMapping (fieldNames), Row)
-import Control.Exception (IOException, SomeAsyncException, SomeException, catch, fromException, throwIO, try)
+import Control.Exception (IOException, SomeAsyncException, catch, fromException, throwIO, try)
 import Data.Aeson (Object, Value (..), eitherDecode)
 import Data.Aeson.Key qualified as K
 import Data.Aeson.KeyMap qualified as KM
