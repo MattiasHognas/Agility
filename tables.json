@@ -1,50 +1,114 @@
 [
   {
-    "title": "Static Info",
-    "columnHeaders": ["Label", "Link"],
-    "placement": "Horizontal",
-    "columnWeights": [1, 2],
-    "columnHeights": [2, 2],
-    "maxWidth": 80,
+    "title": "Static data",
+    "columnHeaders": [
+      "Label",
+      "Link"
+    ],
+    "columnWeights": [
+      1,
+      2
+    ],
+    "minColumnHeight": 1,
+    "maxColumnHeight": 2,
     "colors": {
-      "text": "#d8dee9",
-      "border": "#5e81ac",
-      "title": "#88c0d0",
-      "header": "#81a1c1",
+      "text": "#ffffff",
+      "border": "#5e91ac",
+      "title": "#88d0d0",
+      "header": "#81b1c1",
       "selectedText": "#2e3440",
       "selectedBg": "#a3be8c"
     },
     "source": {
       "type": "static",
       "rows": [
-        [["Welcome", ""], ["Visit", "https://example.com"]],
-        [["Docs", ""], ["Learn", "https://docs.example.com"]]
+        [
+          [
+            "Personal"
+          ],
+          [
+            "Massentropy",
+            "https://massentropy.com"
+          ]
+        ],
+        [
+          [
+            "Code"
+          ],
+          [
+            "Github ",
+            "https://github.com/mattiashognas"
+          ]
+        ]
       ]
     }
   },
   {
-    "title": "Live Jokes",
-    "columnHeaders": ["Setup", "Punchline"],
-    "placement": "Vertical",
-    "columnWeights": [2, 3],
-    "columnHeights": [2, 3],
-    "colors": {
-      "text": "#e5e9f0",
-      "border": "#d08770",
-      "title": "#ebcb8b",
-      "header": "#e5a75e",
-      "selectedText": "#2e3440",
-      "selectedBg": "#ebcb8b"
-    },
-    "source": {
-      "type": "rest",
-      "url": "https://official-joke-api.appspot.com/jokes/ten",
-      "fields": {
-        "title": "setup",
-        "body": "punchline",
-        "id": "id"
+    "tableWeights": [
+      1,
+      2
+    ],
+    "tables": [
+      {
+        "title": "Local file",
+        "columnHeaders": [
+          "Name",
+          "Price"
+        ],
+        "columnWeights": [
+          1,
+          2
+        ],
+        "minColumnHeight": 1,
+        "maxColumnHeight": 2,
+        "colors": {
+          "text": "#ffffff",
+          "border": "#6b8f71",
+          "title": "#a7c957",
+          "header": "#79b227",
+          "selectedText": "#1f2a1f",
+          "selectedBg": "#d4e09b"
+        },
+        "source": {
+          "type": "local",
+          "path": "fruits.json",
+          "fields": [
+            "name",
+            "price"
+          ],
+          "refreshSeconds": 10
+        }
       },
-      "refreshSeconds": 30
-    }
+      {
+        "title": "Live feed",
+        "columnHeaders": [
+          "Question",
+          "Answer"
+        ],
+        "columnWeights": [
+          2,
+          3
+        ],
+        "minColumnHeight": 1,
+        "maxColumnHeight": 5,
+        "colors": {
+          "text": "#ffffff",
+          "border": "#d08770",
+          "title": "#ebcb8b",
+          "header": "#e5a75e",
+          "selectedText": "#2e3440",
+          "selectedBg": "#ebcb8b"
+        },
+        "source": {
+          "type": "web",
+          "url": "https://raw.githubusercontent.com/elijahmanor/devpun/refs/heads/master/jokes.json",
+          "fields": [
+            "question",
+            "answer"
+          ],
+          "refreshSeconds": 60
+        }
+      }
+    ]
   }
 ]
