@@ -18,7 +18,8 @@ ghc-options: -Wall
 executables:
   Agility:
     main: Main.hs
-    source-dirs: app
+    source-dirs:
+      - src
     ghc-options:
       - -threaded
       - -rtsopts
