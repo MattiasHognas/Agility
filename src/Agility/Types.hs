@@ -110,7 +110,7 @@ parseValidColor obj keyStr = do
   mValue <- obj .:? K.fromString keyStr
   case mValue of
     Nothing -> pure Nothing
-    Just value -> case parseConfigColor value of
+    Just value -> case parseColor value of
       Just _ -> pure (Just value)
       Nothing ->
         fail $
@@ -184,8 +184,8 @@ instance FromJSON LayoutItem where
         when (length weights /= length cfgs) $ fail "tableWeights must match the number of tables"
         pure (HorizontalGroup weights cfgs)
 
-parseConfigColor :: String -> Maybe V.Color
-parseConfigColor value = parseNamedColor value <|> parseHexColor value
+parseColor :: String -> Maybe V.Color
+parseColor value = parseNamedColor value <|> parseHexColor value
 
 parseNamedColor :: String -> Maybe V.Color
 parseNamedColor value =

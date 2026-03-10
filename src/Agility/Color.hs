@@ -11,12 +11,10 @@ module Agility.Color
   )
 where
 
-import Agility.Types (ColorConfig (..), TableConfig (..))
+import Agility.Types (ColorConfig (..), TableConfig (..), parseColor)
 import Brick (AttrName, attrName, fg)
 import Control.Applicative ((<|>))
-import Data.Char (toLower)
 import Graphics.Vty qualified as V
-import Numeric (readHex)
 
 textAttr :: Int -> AttrName
 textAttr idx = attrName ("table" ++ show idx ++ ".text")
@@ -35,35 +33,6 @@ tableTitleAttr idx = attrName ("table" ++ show idx ++ ".title")
 
 selectedTableAttr :: Int -> AttrName
 selectedTableAttr idx = attrName ("table" ++ show idx ++ ".selected")
-
-parseNamedColor :: String -> Maybe V.Color
-parseNamedColor value =
-  case map toLower value of
-    "black" -> Just V.black
-    "red" -> Just V.red
-    "green" -> Just V.green
-    "yellow" -> Just V.yellow
-    "blue" -> Just V.blue
-    "magenta" -> Just V.magenta
-    "cyan" -> Just V.cyan
-    "white" -> Just V.white
-    _ -> Nothing
-
-parseHexColor :: String -> Maybe V.Color
-parseHexColor ('#' : xs)
-  | length xs == 6 =
-      case mapM parseHexByte [take 2 xs, take 2 (drop 2 xs), take 2 (drop 4 xs)] of
-        Just [red, green, blue] -> Just (V.rgbColor red green blue)
-        _ -> Nothing
-  where
-    parseHexByte :: String -> Maybe Int
-    parseHexByte hexValue = case readHex hexValue of
-      [(n, "")] -> Just n
-      _ -> Nothing
-parseHexColor _ = Nothing
-
-parseColor :: String -> Maybe V.Color
-parseColor value = parseNamedColor value <|> parseHexColor value
 
 mkAttr :: Maybe String -> Maybe String -> V.Attr
 mkAttr mFg mBg =
