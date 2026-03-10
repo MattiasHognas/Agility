@@ -11,11 +11,11 @@ import Agility.Watcher (refreshSourcesForLayout, startSourceThreads, watchConfig
 import Brick (customMain)
 import Brick.BChan (newBChan)
 import Control.Concurrent (forkIO, newMVar)
+import Control.Exception (IOException, try)
 import Control.Monad (void)
 import Data.ByteString.Lazy qualified as B
 import Graphics.Vty qualified as V
 import Graphics.Vty.CrossPlatform qualified as VCross
-import Control.Exception (IOException, try)
 
 main :: IO ()
 main = do
