@@ -33,4 +33,12 @@ initialRowsForLayout = map rowsForTable . flattenLayoutItems
 distributeWidths :: Int -> [Int] -> [Int]
 distributeWidths total weights =
   let sumW = sum weights
-   in map (\weight -> max 1 $ weight * total `div` sumW) weights
+   in if sumW <= 0
+        then
+          let n = length weights
+           in if n <= 0
+                then []
+                else
+                  let baseWidth = max 1 (total `div` n)
+                   in replicate n baseWidth
+        else map (\weight -> max 1 $ weight * total `div` sumW) weights
