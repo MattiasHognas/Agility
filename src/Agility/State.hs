@@ -29,7 +29,11 @@ safeIndex xs idx
   | otherwise = Just (xs !! idx)
 
 updateAt :: Int -> (a -> a) -> [a] -> [a]
-updateAt idx f xs = take idx xs ++ [f (xs !! idx)] ++ drop (idx + 1) xs
+updateAt idx f xs
+  | idx < 0 || idx >= length xs = xs
+  | otherwise =
+      let (before, x : after) = splitAt idx xs
+       in before ++ f x : after
 
 clampIndex :: Int -> Int -> Int -> Int
 clampIndex lo hi value = max lo (min hi value)
