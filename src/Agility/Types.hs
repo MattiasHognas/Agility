@@ -11,11 +11,16 @@ import qualified Data.Aeson.Key      as K
 import qualified Data.Aeson.KeyMap   as KM
 import           Data.Aeson.Types    (Parser)
 import           Data.Char           (toLower)
+import           Data.List           (isPrefixOf)
 import           GHC.Generics        (Generic)
 import qualified Graphics.Vty        as V
 import           Numeric             (readHex)
 
-data Name = CellName Int Int Int deriving (Eq, Ord, Show)
+data Name
+  = CellName Int Int Int Int
+  | RowName Int Int
+  | PageName Int Int
+  deriving (Eq, Ord, Show)
 
 type Cell = (String, Maybe String)
 
@@ -33,6 +38,10 @@ data TableSource
         fields         :: FieldMapping,
         refreshSeconds :: Int
       }
+  | ImageSource
+      { imageUrl            :: String,
+        imageRefreshSeconds :: Int
+      }
   deriving (Show)
 
 data FieldMapping = FieldMapping
@@ -44,6 +53,7 @@ data ColorConfig = ColorConfig
   { textColor         :: Maybe String,
     borderColor       :: Maybe String,
     titleColor        :: Maybe String,
+    pagingColor         :: Maybe String,
     headerColor       :: Maybe String,
     selectedTextColor :: Maybe String,
     selectedBgColor   :: Maybe String
@@ -73,6 +83,7 @@ data St = St
   { activeTableIndex :: Int,
     rowPositions     :: [Int],
     colPositions     :: [Int],
+    pagePositions    :: [Int],
     dashboardItems   :: [LayoutItem],
     tables           :: [TableConfig],
     tableRowsData    :: [[Row]],
@@ -86,6 +97,7 @@ data AppEvent
   deriving (Show)
 
 instance FromJSON FieldMapping where
+  parseJSON :: Value -> Parser FieldMapping
   parseJSON value =
     (FieldMapping <$> parseJSON value)
       <|> withObject
@@ -116,16 +128,19 @@ parseValidColor obj keyStr = do
             ++ "\". Use a named color (e.g. \"red\", \"blue\") or a hex value (e.g. \"#ff0000\")."
 
 instance FromJSON ColorConfig where
+  parseJSON :: Value -> Parser ColorConfig
   parseJSON = withObject "ColorConfig" $ \obj ->
     ColorConfig
       <$> parseValidColor obj "text"
       <*> parseValidColor obj "border"
       <*> parseValidColor obj "title"
+      <*> parseValidColor obj "paging"
       <*> parseValidColor obj "header"
       <*> parseValidColor obj "selectedText"
       <*> parseValidColor obj "selectedBg"
 
 instance FromJSON TableSource where
+  parseJSON :: Value -> Parser TableSource
   parseJSON = withObject "TableSource" $ \obj -> do
     typ <- obj .: "type"
     case (typ :: String) of
@@ -147,15 +162,35 @@ instance FromJSON TableSource where
           <$> obj .: "path"
           <*> obj .: "fields"
           <*> pure refresh
+      "image" -> do
+        refresh <- parseRefreshSeconds obj
+        imageUrl <- parseWebUrl obj
+        ImageSource
+          <$> pure imageUrl
+          <*> pure refresh
       _ -> fail "Unknown source type"
 
 parseRefreshSeconds :: Object -> Parser Int
 parseRefreshSeconds obj = do
   refresh <- obj .:? "refreshSeconds" .!= 5
-  when (refresh <= 0) $ fail "refreshSeconds must be at least 1"
+  validateRefreshSeconds refresh
+
+validateRefreshSeconds :: Int -> Parser Int
+validateRefreshSeconds refresh = do
+  when (refresh < 0) $ fail "refreshSeconds must be 0 or greater"
   pure refresh
 
+parseWebUrl :: Object -> Parser String
+parseWebUrl obj = do
+  sourceUrl <- obj .: "url"
+  when (not (isWebUrl sourceUrl)) $ fail "image url must start with http:// or https://"
+  pure sourceUrl
+
+isWebUrl :: String -> Bool
+isWebUrl value = "http://" `isPrefixOf` value || "https://" `isPrefixOf` value
+
 instance FromJSON TableConfig where
+  parseJSON :: Value -> Parser TableConfig
   parseJSON = withObject "TableConfig" $ \obj -> do
     minH <- obj .:? "minColumnHeight" .!= 1
     maxH <- obj .:? "maxColumnHeight" .!= minH
@@ -174,6 +209,7 @@ instance FromJSON TableConfig where
       <*> obj .: "source"
 
 instance FromJSON LayoutItem where
+  parseJSON :: Value -> Parser LayoutItem
   parseJSON = withObject "LayoutItem" $ \obj ->
     if KM.member (K.fromString "tableWeights") obj || KM.member (K.fromString "tables") obj
       then parseGroup obj

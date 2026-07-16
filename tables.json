@@ -15,6 +15,7 @@
       "text": "#ffffff",
       "border": "#5e91ac",
       "title": "#88d0d0",
+      "paging": "#b9d6df",
       "header": "#81b1c1",
       "selectedText": "#2e3440",
       "selectedBg": "#a3be8c"
@@ -36,11 +37,33 @@
             "Code"
           ],
           [
-            "Github ",
+            "Github",
             "https://github.com/mattiashognas"
           ]
         ]
       ]
+    }
+  },
+  {
+    "title": "Image",
+    "columnWeights": [
+      1
+    ],
+    "minColumnHeight": 1,
+    "maxColumnHeight": 20,
+    "colors": {
+      "text": "#ffffff",
+      "border": "#d08770",
+      "title": "#ebcb8b",
+      "paging": "#f0d79a",
+      "header": "#e5a75e",
+      "selectedText": "#2e3440",
+      "selectedBg": "#ebcb8b"
+    },
+    "source": {
+      "type": "image",
+      "url": "https://mattiashognas.github.io/Ashes/logo.png",
+      "refreshSeconds": 0
     }
   },
   {
@@ -65,6 +88,7 @@
           "text": "#ffffff",
           "border": "#6b8f71",
           "title": "#a7c957",
+          "paging": "#cfe88c",
           "header": "#79b227",
           "selectedText": "#1f2a1f",
           "selectedBg": "#d4e09b"
@@ -95,6 +119,7 @@
           "text": "#ffffff",
           "border": "#d08770",
           "title": "#ebcb8b",
+          "paging": "#f0d79a",
           "header": "#e5a75e",
           "selectedText": "#2e3440",
           "selectedBg": "#ebcb8b"

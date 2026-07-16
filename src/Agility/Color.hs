@@ -6,6 +6,7 @@ module Agility.Color
     parseColor,
     selectedTableAttr,
     tableAttrs,
+    tablePagingAttr,
     tableTitleAttr,
     textAttr,
   )
@@ -32,6 +33,9 @@ linkAttr idx = attrName ("table" ++ show idx ++ ".link")
 tableTitleAttr :: Int -> AttrName
 tableTitleAttr idx = attrName ("table" ++ show idx ++ ".title")
 
+tablePagingAttr :: Int -> AttrName
+tablePagingAttr idx = attrName ("table" ++ show idx ++ ".paging")
+
 selectedTableAttr :: Int -> AttrName
 selectedTableAttr idx = attrName ("table" ++ show idx ++ ".selected")
 
@@ -50,6 +54,7 @@ tableAttrs cfgs =
           txt = colorCfg >>= textColor
           bord = colorCfg >>= borderColor
           ttl = colorCfg >>= titleColor
+          paging = colorCfg >>= pagingColor
           hdr = colorCfg >>= headerColor
           selFg = colorCfg >>= selectedTextColor
           selBg = colorCfg >>= selectedBgColor
@@ -58,6 +63,7 @@ tableAttrs cfgs =
             (headerAttr idx, mkAttr hdr Nothing),
             (linkAttr idx, V.withStyle (mkAttr (txt <|> hdr <|> Just "cyan") Nothing) V.underline),
             (tableTitleAttr idx, V.withStyle (mkAttr ttl Nothing) V.bold),
+            (tablePagingAttr idx, V.withStyle (mkAttr paging Nothing) V.bold),
             ( selectedTableAttr idx,
               case selFg <|> selBg of
                 Nothing -> fg V.yellow

@@ -42,6 +42,7 @@ main = do
                   0
                   (replicate (length flatTables) 0)
                   (replicate (length flatTables) 0)
+                  (replicate (length flatTables) 0)
                   layoutCfgs
                   flatTables
                   rows

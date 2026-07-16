@@ -3,17 +3,17 @@ module Agility.State
     clampIndex,
     colCount,
     cycleTable,
+    movePage,
     normalizeSelection,
     moveSelection,
     rowCount,
     safeIndex,
-    selectedCellUrl,
     tableCount,
     updateAt,
   )
 where
 
-import           Agility.Types (St (activeTableIndex, colPositions, rowPositions, tableRowsData, tables))
+import           Agility.Types (St (activeTableIndex, colPositions, pagePositions, rowPositions, tableRowsData, tables))
 import           Data.Maybe    (fromMaybe)
 
 safeIndex :: [a] -> Int -> Maybe a
@@ -49,12 +49,13 @@ colCount st tableIdx rowIdx = maybe 0 length $ do
 
 normalizeSelection :: St -> St
 normalizeSelection st
-  | tableCount st == 0 = st {activeTableIndex = 0, rowPositions = [], colPositions = []}
+  | tableCount st == 0 = st {activeTableIndex = 0, rowPositions = [], colPositions = [], pagePositions = []}
   | otherwise =
       let tableTotal = tableCount st
           activeIdx = clampIndex 0 (tableTotal - 1) (activeTableIndex st)
           fixedRows = take tableTotal (rowPositions st ++ repeat 0)
           fixedCols = take tableTotal (colPositions st ++ repeat 0)
+          fixedPages = take tableTotal (pagePositions st ++ repeat 0)
           normalizeAt idx (rowPos, colPos) =
             let rows = rowCount st idx
                 newRow = if rows == 0 then 0 else clampIndex 0 (rows - 1) rowPos
@@ -65,7 +66,8 @@ normalizeSelection st
        in st
             { activeTableIndex = activeIdx,
               rowPositions = map fst normalized,
-              colPositions = map snd normalized
+              colPositions = map snd normalized,
+              pagePositions = map (max 0) fixedPages
             }
 
 moveSelection :: Int -> Int -> St -> St
@@ -94,17 +96,22 @@ cycleTable delta st
           nextIdx = (activeTableIndex normalized + delta + total) `mod` total
        in normalizeSelection normalized {activeTableIndex = nextIdx}
 
+movePage :: Int -> St -> St
+movePage delta st =
+  let normalized = normalizeSelection st
+      tableIdx = activeTableIndex normalized
+      pages = pagePositions normalized
+      rows = rowPositions normalized
+      currentPage = fromMaybe 0 (safeIndex pages tableIdx)
+      nextPage = max 0 (currentPage + delta)
+   in normalized
+        { pagePositions = updateAt tableIdx (const nextPage) pages,
+          rowPositions = updateAt tableIdx (const 0) rows
+        }
+
 cellUrlAt :: St -> Int -> Int -> Int -> Maybe String
 cellUrlAt st tableIdx rowIdx colIdx = do
   rows <- safeIndex (tableRowsData st) tableIdx
   row <- safeIndex rows rowIdx
   (_, mUrl) <- safeIndex row colIdx
   mUrl
-
-selectedCellUrl :: St -> Maybe String
-selectedCellUrl st = do
-  let normalized = normalizeSelection st
-  let tableIdx = activeTableIndex normalized
-  rowIdx <- safeIndex (rowPositions normalized) tableIdx
-  colIdx <- safeIndex (colPositions normalized) tableIdx
-  cellUrlAt normalized tableIdx rowIdx colIdx

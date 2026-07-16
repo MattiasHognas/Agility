@@ -11,7 +11,8 @@ import           Agility.DataSource   (fetchLocalRows, fetchWebRows,
                                        safeGetModificationTime)
 import           Agility.Types        (AppEvent (..), LayoutItem,
                                        TableConfig (source),
-                                       TableSource (LocalSource, WebSource))
+                                       TableSource (ImageSource, LocalSource,
+                                                    WebSource))
 import           Brick.BChan          (BChan, writeBChan)
 import           Control.Concurrent   (MVar, ThreadId, forkIO, killThread,
                                        swapMVar, threadDelay)
@@ -60,6 +61,16 @@ startSourceThreads gen sources chan = fmap catMaybes (mapM forkSource sources)
                   writeBChan chan (UpdateTable idx rows gen)
                   loop currentMod refresh
                 else loop currentMod (secondsUntilRefresh - 1)
+    forkSource (idx, ImageSource _ refresh) =
+      if refresh == 0
+        then pure Nothing
+        else
+          Just
+            <$> forkIO
+              ( forever $ do
+                  threadDelay (refresh * 1000000)
+                  writeBChan chan (UpdateTable idx [] gen)
+              )
     forkSource _ = pure Nothing
 
 watchConfig :: FilePath -> BChan AppEvent -> MVar [ThreadId] -> IO ()

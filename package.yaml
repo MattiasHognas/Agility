@@ -37,3 +37,4 @@ executables:
       - http-conduit >= 2.3.9.1
       - process >= 1.6.26.0
       - vty-crossplatform >= 0.4.0.0
+      - JuicyPixels >= 3.3.9
