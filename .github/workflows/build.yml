@@ -22,7 +22,7 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Stack on ${{ matrix.os }}
         uses: haskell-actions/setup@v2
