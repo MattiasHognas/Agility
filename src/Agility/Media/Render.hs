@@ -10,8 +10,8 @@ where
 
 import           Agility.Media.Frame (Frame (..), Rgba (..), pixelAt)
 import           Agility.Media.Scale (fitWithin, scaleFrame)
-import           Data.List           (groupBy)
 import           Data.Function       (on)
+import           Data.List           (groupBy)
 import qualified Graphics.Vty        as V
 
 -- | Fit a frame into a cols x rows cell area, keeping its aspect ratio.

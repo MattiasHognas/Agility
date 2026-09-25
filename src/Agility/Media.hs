@@ -15,9 +15,9 @@ import           Control.Exception    (SomeAsyncException, SomeException,
                                        evaluate, fromException, throwIO, try)
 import qualified Data.ByteString      as B
 import qualified Data.ByteString.Lazy as L
-import           Network.HTTP.Simple  (HttpException (..),
-                                       getResponseBody, getResponseStatusCode,
-                                       httpLBS, parseRequest)
+import           Network.HTTP.Simple  (HttpException (..), getResponseBody,
+                                       getResponseStatusCode, httpLBS,
+                                       parseRequest)
 
 -- | Decoded frames larger than this are shrunk once up front; no terminal
 -- table needs more pixels than this.

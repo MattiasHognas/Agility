@@ -14,22 +14,21 @@ module Agility.Media.Png
   )
 where
 
-import           Agility.Media.Frame                (Frame (..))
-import           Control.Monad                      (unless, when)
-import           Control.Monad.ST                   (ST)
-import           Data.Bits                          (complement, shiftL,
-                                                     shiftR, xor, (.&.), (.|.))
-import qualified Data.ByteString                    as B
-import qualified Data.ByteString.Lazy               as L
-import qualified Data.ByteString.Unsafe             as BU
-import qualified Codec.Compression.Zlib.Internal    as Z
-import           Data.Char                          (isAsciiLower,
-                                                     isAsciiUpper)
-import qualified Data.ByteString.Char8              as BC
-import qualified Data.Vector.Storable               as VS
-import qualified Data.Vector.Storable.Mutable       as MVS
-import qualified Data.Vector.Unboxed                as VU
-import           Data.Word                          (Word32, Word8)
+import           Agility.Media.Frame             (Frame (..))
+import qualified Codec.Compression.Zlib.Internal as Z
+import           Control.Monad                   (unless, when)
+import           Control.Monad.ST                (ST)
+import           Data.Bits                       (complement, shiftL, shiftR,
+                                                  xor, (.&.), (.|.))
+import qualified Data.ByteString                 as B
+import qualified Data.ByteString.Char8           as BC
+import qualified Data.ByteString.Lazy            as L
+import qualified Data.ByteString.Unsafe          as BU
+import           Data.Char                       (isAsciiLower, isAsciiUpper)
+import qualified Data.Vector.Storable            as VS
+import qualified Data.Vector.Storable.Mutable    as MVS
+import qualified Data.Vector.Unboxed             as VU
+import           Data.Word                       (Word32, Word8)
 
 data ColorType
   = Grayscale
@@ -172,7 +171,7 @@ buildPaletteTable (Just plte) trns =
      in case channel of
           3 -> case trns of
             Just alpha | entry < B.length alpha -> B.index alpha entry
-            _                                    -> 255
+            _                                   -> 255
           _
             | entry < entries -> B.index plte (entry * 3 + channel)
             | otherwise -> 0
@@ -377,7 +376,7 @@ reconstruct header paletteTable transparency raw =
         b <- sampleAt rowStart i 2
         let alpha = case transparency of
               TransparentRgb tr tg tb | tr == r && tg == g && tb == b -> 0
-              _ -> 255
+              _                                                       -> 255
         put target (to8 r) (to8 g) (to8 b) alpha
       (GrayscaleAlpha, _, _) -> eachPixel $ \rowStart i target -> do
         v <- sampleAt rowStart i 0

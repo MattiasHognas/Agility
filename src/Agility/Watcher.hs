@@ -12,8 +12,7 @@ import           Agility.DataSource   (fetchLocalRows, fetchWebRows,
 import           Agility.Media        (loadImageUrl)
 import           Agility.Types        (AppEvent (..), LayoutItem,
                                        TableConfig (source),
-                                       TableSource (ImageSource, LocalSource,
-                                                    WebSource))
+                                       TableSource (ImageSource, LocalSource, WebSource))
 import           Brick.BChan          (BChan, writeBChan)
 import           Control.Concurrent   (MVar, ThreadId, forkIO, killThread,
                                        swapMVar, threadDelay)

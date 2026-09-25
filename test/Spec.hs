@@ -1,20 +1,18 @@
 module Main (main) where
 
-import           Agility.Media          (decodeImage)
-import           Agility.Media.Frame    (Frame (..), Rgba (..), mkFrame,
-                                         pixelAt)
-import           Agility.Media.Render   (frameToImage, renderFrame)
-import           Agility.Media.Scale    (fitWithin, scaleFrame)
-import           Control.Monad          (unless)
-import           Data.Bits              (xor)
-import qualified Data.ByteString        as B
-import           Data.IORef             (IORef, modifyIORef', newIORef,
-                                         readIORef)
-import qualified Data.Vector.Storable   as VS
-import           Data.Word              (Word64, Word8)
-import qualified Graphics.Vty           as V
-import           Numeric                (showHex)
-import           System.Exit            (exitFailure)
+import           Agility.Media        (decodeImage)
+import           Agility.Media.Frame  (Frame (..), Rgba (..), mkFrame, pixelAt)
+import           Agility.Media.Render (frameToImage, renderFrame)
+import           Agility.Media.Scale  (fitWithin, scaleFrame)
+import           Control.Monad        (unless)
+import           Data.Bits            (xor)
+import qualified Data.ByteString      as B
+import           Data.IORef           (IORef, modifyIORef', newIORef, readIORef)
+import qualified Data.Vector.Storable as VS
+import           Data.Word            (Word64, Word8)
+import qualified Graphics.Vty         as V
+import           Numeric              (showHex)
+import           System.Exit          (exitFailure)
 
 main :: IO ()
 main = do

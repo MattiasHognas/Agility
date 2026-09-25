@@ -6,14 +6,15 @@ where
 
 import           Agility.Dashboard      (flattenLayoutItems,
                                          initialRowsForLayout)
-import           Agility.State          (cellUrlAt, cycleTable, movePage, moveSelection,
-                                         normalizeSelection, rowCount, safeIndex,
-                                         updateAt)
+import           Agility.State          (cellUrlAt, cycleTable, movePage,
+                                         moveSelection, normalizeSelection,
+                                         rowCount, safeIndex, updateAt)
 import           Agility.Types          (AppEvent (..),
                                          MediaState (MediaLoading), Name (..),
                                          St (activeTableIndex, colPositions, configGeneration, dashboardItems, pagePositions, rowPositions, tableMedia, tableRowsData, tables))
 import           Brick                  (BrickEvent (AppEvent, MouseDown, VtyEvent),
-                                         EventM, gets, halt, lookupExtent, modify)
+                                         EventM, gets, halt, lookupExtent,
+                                         modify)
 import           Control.Exception      (IOException, try)
 import           Control.Monad          (void)
 import           Control.Monad.IO.Class (liftIO)

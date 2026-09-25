@@ -6,8 +6,7 @@ import           Agility.Config             (decodeLayoutConfig)
 import           Agility.Dashboard          (flattenLayoutItems,
                                              initialRowsForLayout)
 import           Agility.State              (normalizeSelection)
-import           Agility.Types              (MediaState (MediaLoading),
-                                             St (..))
+import           Agility.Types              (MediaState (MediaLoading), St (..))
 import           Agility.UI.Draw            (app)
 import           Agility.Watcher            (refreshSourcesForLayout,
                                              startSourceThreads, watchConfig)

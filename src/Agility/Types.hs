@@ -54,7 +54,7 @@ data ColorConfig = ColorConfig
   { textColor         :: Maybe String,
     borderColor       :: Maybe String,
     titleColor        :: Maybe String,
-    pagingColor         :: Maybe String,
+    pagingColor       :: Maybe String,
     headerColor       :: Maybe String,
     selectedTextColor :: Maybe String,
     selectedBgColor   :: Maybe String
