@@ -9,8 +9,9 @@ import           Agility.Dashboard      (flattenLayoutItems,
 import           Agility.State          (cellUrlAt, cycleTable, movePage, moveSelection,
                                          normalizeSelection, rowCount, safeIndex,
                                          updateAt)
-import           Agility.Types          (AppEvent (..), Name (..),
-                                         St (activeTableIndex, colPositions, configGeneration, dashboardItems, pagePositions, rowPositions, tableRowsData, tables))
+import           Agility.Types          (AppEvent (..),
+                                         MediaState (MediaLoading), Name (..),
+                                         St (activeTableIndex, colPositions, configGeneration, dashboardItems, pagePositions, rowPositions, tableMedia, tableRowsData, tables))
 import           Brick                  (BrickEvent (AppEvent, MouseDown, VtyEvent),
                                          EventM, gets, halt, lookupExtent, modify)
 import           Control.Exception      (IOException, try)
@@ -93,6 +94,11 @@ handleEvent (AppEvent (UpdateTable idx rows gen)) =
     if gen == configGeneration st
       then normalizeSelection st {tableRowsData = updateAt idx (const rows) (tableRowsData st)}
       else st
+handleEvent (AppEvent (UpdateMedia idx media gen)) =
+  modify $ \st ->
+    if gen == configGeneration st
+      then st {tableMedia = updateAt idx (const media) (tableMedia st)}
+      else st
 handleEvent (AppEvent (ReloadConfig cfgs)) =
   let flatTables = flattenLayoutItems cfgs
       rows = initialRowsForLayout cfgs
@@ -102,6 +108,7 @@ handleEvent (AppEvent (ReloadConfig cfgs)) =
             { dashboardItems = cfgs,
               tables = flatTables,
               tableRowsData = rows,
+              tableMedia = replicate (length flatTables) MediaLoading,
               rowPositions = replicate (length flatTables) 0,
               colPositions = replicate (length flatTables) 0,
               pagePositions = replicate (length flatTables) 0,

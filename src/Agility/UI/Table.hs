@@ -7,41 +7,23 @@ import           Agility.Color        (borderAttr, headerAttr, linkAttr,
                                        selectedTableAttr, tablePagingAttr,
                                        tableTitleAttr, textAttr)
 import           Agility.Dashboard    (distributeWidths)
+import           Agility.Media.Render (renderFrame)
 import           Agility.State        (clampIndex, safeIndex)
-import           Agility.Types        (Name (..), Row,
-                                       St (activeTableIndex, colPositions, pagePositions, rowPositions),
+import           Agility.Types        (MediaState (..), Name (..), Row,
+                                       St (activeTableIndex, colPositions, pagePositions, rowPositions, tableMedia),
                                        TableConfig (columnHeaders, columnWeights, maxColumnHeight, minColumnHeight, source, title),
                                        TableSource (ImageSource))
 import           Brick                (Context (availHeight, availWidth),
-                                       Padding (Max, Pad),
-                                       Size (Fixed), Widget (Widget, render),
-                                       clickable, emptyWidget, getContext,
-                                       hBox, padLeft, padRight, padTop, str,
-                                       raw, reportExtent, vBox, withAttr,
-                                       (<+>))
+                                       Padding (Max, Pad), Size (Fixed),
+                                       Widget (Widget, render), clickable,
+                                       emptyWidget, getContext, hBox, padLeft,
+                                       padRight, padTop, raw, reportExtent, str,
+                                       vBox, withAttr, (<+>))
 import           Brick.Widgets.Border (border)
-import           Codec.Picture        (DynamicImage, Image, PixelRGB8 (..),
-                                       convertRGB8, decodeImage, generateImage,
-                                       imageHeight, imageWidth, pixelAt)
-import           Control.Exception    (IOException, SomeAsyncException, catch,
-                                       fromException, throwIO, try)
-import           Data.Char            (isDigit)
-import qualified Data.ByteString.Lazy as B
-import           Data.IORef           (IORef, atomicModifyIORef', newIORef,
-                                       readIORef)
 import           Data.List            (transpose, zipWith4)
-import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe, isJust)
-import           Data.Time.Clock      (UTCTime, addUTCTime, getCurrentTime)
 import qualified Data.Text            as T
-import           Network.HTTP.Simple  (getResponseBody, httpLBS, parseRequest)
-import           System.Directory     (getTemporaryDirectory, removeFile)
-import           System.Exit          (ExitCode (ExitSuccess))
-import           System.IO            (hClose, openTempFile)
-import           System.IO.Unsafe     (unsafePerformIO)
-import           System.Process       (readProcessWithExitCode)
 import qualified Graphics.Vty         as V
-import qualified Graphics.Vty.Image   as VI
 
 wrapOrTruncate :: Int -> Int -> String -> [String]
 wrapOrTruncate width maxHeight txt =
@@ -56,272 +38,6 @@ wrapOrTruncate width maxHeight txt =
 
 padCells :: Int -> [[String]] -> [[String]]
 padCells height = map (\xs -> xs ++ replicate (height - length xs) "")
-
-type ImageCacheKey = (String, Int, Int)
-
-type CachedImage = (UTCTime, V.Image)
-
-imageCache :: IORef (M.Map ImageCacheKey CachedImage)
-imageCache = unsafePerformIO (newIORef M.empty)
-{-# NOINLINE imageCache #-}
-
-renderImage :: String -> Int -> Int -> Int -> V.Image
-renderImage imageUrl refreshSeconds width height =
-  unsafePerformIO $ do
-    now <- getCurrentTime
-    cache <- readIORef imageCache
-    let key = (imageUrl, width, height)
-    case M.lookup key cache of
-      Just (_, cached)
-        | refreshSeconds == 0 -> pure cached
-      Just (cachedAt, cached)
-        | now < addUTCTime (fromIntegral refreshSeconds) cachedAt -> pure cached
-      Nothing -> do
-        rendered <- loadImage imageUrl width height
-        atomicModifyIORef' imageCache $ \current ->
-          (M.insert key (now, rendered) current, ())
-        pure rendered
-      Just _ -> do
-        rendered <- loadImage imageUrl width height
-        atomicModifyIORef' imageCache $ \current ->
-          (M.insert key (now, rendered) current, ())
-        pure rendered
-{-# NOINLINE renderImage #-}
-
-loadImage :: String -> Int -> Int -> IO V.Image
-loadImage url width height =
-  -- Catch fetch/render failures, but still let async exceptions terminate cleanly.
-  go `catch` \e ->
-    case fromException e :: Maybe SomeAsyncException of
-      Just _  -> throwIO e
-      Nothing -> pure (linesToImage width height ["Unable to render image: " ++ url])
-  where
-    go = do
-      req <- parseRequest url
-      resp <- httpLBS req
-      tmpDir <- getTemporaryDirectory
-      (tmpPath, handle) <- openTempFile tmpDir "agility-image"
-      hClose handle
-      let body = getResponseBody resp
-      B.writeFile tmpPath body
-      result <- renderImageBytes body tmpPath width height
-      _ <- try (removeFile tmpPath) :: IO (Either IOException ())
-      pure result
-
-renderImageBytes :: B.ByteString -> FilePath -> Int -> Int -> IO V.Image
-renderImageBytes body imagePath width height =
-  case decodeImage (B.toStrict body) of
-    Right dynImage -> pure (dynamicImageToBlockImage width height dynImage)
-    Left _         -> renderImageFile imagePath width height
-
-dynamicImageToBlockImage :: Int -> Int -> DynamicImage -> V.Image
-dynamicImageToBlockImage cellWidth cellHeight dynImage =
-  let scaled = scaleImageToPixels cellWidth (cellHeight * 2) (convertRGB8 dynImage)
-   in VI.resize cellWidth cellHeight $
-        VI.vertCat [blockRow scaled y | y <- [0, 2 .. imageHeight scaled - 1]]
-
-scaleImageToPixels :: Int -> Int -> Image PixelRGB8 -> Image PixelRGB8
-scaleImageToPixels targetWidth targetHeight img =
-  let boundedWidth = max 1 targetWidth
-      boundedHeight = max 1 targetHeight
-      srcWidth = imageWidth img
-      srcHeight = imageHeight img
-      scale = min (fromIntegral boundedWidth / fromIntegral srcWidth :: Double) (fromIntegral boundedHeight / fromIntegral srcHeight)
-      scaledWidth = max 1 (min boundedWidth (round (fromIntegral srcWidth * scale)))
-      scaledHeight = max 1 (min boundedHeight (round (fromIntegral srcHeight * scale)))
-   in generateImage (sampleNearest img scaledWidth scaledHeight) scaledWidth scaledHeight
-
-sampleNearest :: Image PixelRGB8 -> Int -> Int -> Int -> Int -> PixelRGB8
-sampleNearest img targetWidth targetHeight x y =
-  let srcX = min (imageWidth img - 1) (x * imageWidth img `div` targetWidth)
-      srcY = min (imageHeight img - 1) (y * imageHeight img `div` targetHeight)
-   in pixelAt img srcX srcY
-
-blockRow :: Image PixelRGB8 -> Int -> V.Image
-blockRow img y =
-  VI.horizCat [blockCell (pixelAt img x y) (bottomPixel x) | x <- [0 .. imageWidth img - 1]]
-  where
-    bottomPixel x =
-      if y + 1 < imageHeight img
-        then Just (pixelAt img x (y + 1))
-        else Nothing
-
-blockCell :: PixelRGB8 -> Maybe PixelRGB8 -> V.Image
-blockCell top Nothing =
-  VI.char (V.withForeColor V.defAttr (pixelColor top)) '▀'
-blockCell top (Just bottom) =
-  VI.char (V.withBackColor (V.withForeColor V.defAttr (pixelColor top)) (pixelColor bottom)) '▀'
-
-pixelColor :: PixelRGB8 -> V.Color
-pixelColor (PixelRGB8 red green blue) =
-  V.rgbColor (fromIntegral red :: Int) (fromIntegral green :: Int) (fromIntegral blue :: Int)
-
-renderImageFile :: FilePath -> Int -> Int -> IO V.Image
-renderImageFile imagePath width height = do
-  chafaResult <- try (readProcessWithExitCode "chafa" ["--size", show width ++ "x" ++ show height, "--symbols", "block", "--colors", "full", "--color-space", "rgb", imagePath] "") :: IO (Either IOException (ExitCode, String, String))
-  case chafaResult of
-    Right (ExitSuccess, output, _) -> pure (ansiToImage width height output)
-    _ -> do
-      img2txtResult <- try (readProcessWithExitCode "img2txt" ["-W", show width, "-H", show height, "-f", "utf8", imagePath] "") :: IO (Either IOException (ExitCode, String, String))
-      pure $
-        case img2txtResult of
-          Right (ExitSuccess, output, _) -> linesToImage width height (map stripAnsi (lines output))
-          _                             -> linesToImage width height ["Unable to render image"]
-
-data AnsiState = AnsiState
-  { ansiFg :: Maybe V.Color,
-    ansiBg :: Maybe V.Color
-  }
-
-ansiToImage :: Int -> Int -> String -> V.Image
-ansiToImage width height output =
-  VI.resize width height $
-    VI.vertCat $
-      take height (map lineToImage (parseAnsiLines output) ++ repeat blankLine)
-  where
-    blankLine = VI.charFill V.defAttr ' ' width 1
-    lineToImage [] = blankLine
-    lineToImage spans = VI.resizeWidth width (VI.horizCat (map spanToImage spans))
-    spanToImage (attr, txt) = VI.string attr txt
-
-parseAnsiLines :: String -> [[(V.Attr, String)]]
-parseAnsiLines output =
-  let parsed = reverse (go initialState [] [] [] output)
-   in if null parsed then [[]] else parsed
-  where
-    initialState = AnsiState Nothing Nothing
-
-    go st lineAcc txtAcc linesAcc [] =
-      flushLine st lineAcc txtAcc : linesAcc
-    go st lineAcc txtAcc linesAcc ('\n' : rest) =
-      go st [] [] (flushLine st lineAcc txtAcc : linesAcc) rest
-    go st lineAcc txtAcc linesAcc ('\ESC' : '[' : rest) =
-      let (codes, afterCodes) = span (/= 'm') rest
-          nextInput = drop 1 afterCodes
-          nextLineAcc = flushText st lineAcc txtAcc
-          nextState = applySgrCodes st (parseSgrCodes codes)
-       in go nextState nextLineAcc [] linesAcc nextInput
-    go st lineAcc txtAcc linesAcc (c : rest) =
-      go st lineAcc (c : txtAcc) linesAcc rest
-
-flushLine :: AnsiState -> [(V.Attr, String)] -> String -> [(V.Attr, String)]
-flushLine st lineAcc txtAcc = reverse (flushText st lineAcc txtAcc)
-
-flushText :: AnsiState -> [(V.Attr, String)] -> String -> [(V.Attr, String)]
-flushText _ lineAcc [] = lineAcc
-flushText st lineAcc txtAcc = (stateAttr st, reverse txtAcc) : lineAcc
-
-parseSgrCodes :: String -> [Int]
-parseSgrCodes "" = [0]
-parseSgrCodes codes = map readCode (splitOnSemicolon codes)
-  where
-    readCode value =
-      case reads value of
-        [(n, "")] -> n
-        _         -> 0
-
-splitOnSemicolon :: String -> [String]
-splitOnSemicolon [] = [""]
-splitOnSemicolon value =
-  let (part, rest) = break (== ';') value
-   in case rest of
-        []       -> [part]
-        _ : more -> part : splitOnSemicolon more
-
-applySgrCodes :: AnsiState -> [Int] -> AnsiState
-applySgrCodes = go
-  where
-    go st [] = st
-    go _ (0 : rest) = go (AnsiState Nothing Nothing) rest
-    go st (39 : rest) = go st {ansiFg = Nothing} rest
-    go st (49 : rest) = go st {ansiBg = Nothing} rest
-    go st (38 : 2 : r : g : b : rest) = go st {ansiFg = Just (V.rgbColor r g b)} rest
-    go st (48 : 2 : r : g : b : rest) = go st {ansiBg = Just (V.rgbColor r g b)} rest
-    go st (38 : 5 : colorIdx : rest) = go st {ansiFg = ansi256Color colorIdx} rest
-    go st (48 : 5 : colorIdx : rest) = go st {ansiBg = ansi256Color colorIdx} rest
-    go st (code : rest)
-      | code >= 30 && code <= 37 = go st {ansiFg = ansiBasicColor (code - 30)} rest
-      | code >= 40 && code <= 47 = go st {ansiBg = ansiBasicColor (code - 40)} rest
-      | code >= 90 && code <= 97 = go st {ansiFg = ansiBrightColor (code - 90)} rest
-      | code >= 100 && code <= 107 = go st {ansiBg = ansiBrightColor (code - 100)} rest
-    go st (_ : rest) = go st rest
-
-ansiBasicColor :: Int -> Maybe V.Color
-ansiBasicColor idx = case idx of
-  0 -> Just V.black
-  1 -> Just V.red
-  2 -> Just V.green
-  3 -> Just V.yellow
-  4 -> Just V.blue
-  5 -> Just V.magenta
-  6 -> Just V.cyan
-  7 -> Just V.white
-  _ -> Nothing
-
-ansiBrightColor :: Int -> Maybe V.Color
-ansiBrightColor idx = case idx of
-  0 -> Just (rgb 128 128 128)
-  1 -> Just (rgb 255 0 0)
-  2 -> Just (rgb 0 255 0)
-  3 -> Just (rgb 255 255 0)
-  4 -> Just (rgb 0 0 255)
-  5 -> Just (rgb 255 0 255)
-  6 -> Just (rgb 0 255 255)
-  7 -> Just (rgb 255 255 255)
-  _ -> Nothing
-
-rgb :: Int -> Int -> Int -> V.Color
-rgb = V.rgbColor
-
-ansi256Color :: Int -> Maybe V.Color
-ansi256Color idx
-  | idx >= 0 && idx <= 15 = ansi16Color idx
-  | idx >= 16 && idx <= 231 =
-      let cubeIdx = idx - 16
-          red = cubeComponent (cubeIdx `div` 36)
-          green = cubeComponent ((cubeIdx `div` 6) `mod` 6)
-          blue = cubeComponent (cubeIdx `mod` 6)
-       in Just (rgb red green blue)
-  | idx >= 232 && idx <= 255 =
-      let level = 8 + (idx - 232) * 10
-       in Just (rgb level level level)
-  | otherwise = Nothing
-  where
-    cubeComponent value =
-      if value == 0 then 0 else 55 + value * 40
-
-ansi16Color :: Int -> Maybe V.Color
-ansi16Color idx
-  | idx < 8 = ansiBasicColor idx
-  | otherwise = ansiBrightColor (idx - 8)
-
-stateAttr :: AnsiState -> V.Attr
-stateAttr st =
-  let withFg = maybe V.defAttr (V.withForeColor V.defAttr) (ansiFg st)
-   in maybe withFg (V.withBackColor withFg) (ansiBg st)
-
-linesToImage :: Int -> Int -> [String] -> V.Image
-linesToImage width height rows =
-  VI.resize width height $
-    VI.vertCat $
-      map (VI.string V.defAttr) (fitLines width height rows)
-
-fitLines :: Int -> Int -> [String] -> [String]
-fitLines width height rows =
-  take height (map fitLine rows ++ repeat (replicate width ' '))
-  where
-    fitLine line = take width line ++ replicate (max 0 (width - length line)) ' '
-
-stripAnsi :: String -> String
-stripAnsi [] = []
-stripAnsi ('\ESC' : '[' : rest) = stripAnsi (dropAnsi rest)
-stripAnsi (c : rest) = c : stripAnsi rest
-
-dropAnsi :: String -> String
-dropAnsi [] = []
-dropAnsi (c : rest)
-  | isDigit c || c == ';' = dropAnsi rest
-  | otherwise = rest
 
 rowLineCount :: [Int] -> Int -> Int -> Row -> Int
 rowLineCount widths minH maxH row =
@@ -346,11 +62,12 @@ paginateRows limit = go [] 0 []
 drawTable :: St -> Int -> TableConfig -> [Row] -> Widget Name
 drawTable st idx cfg rows =
   case source cfg of
-    ImageSource imageUrl refresh -> drawImageTable idx cfg imageUrl refresh
-    _                            -> drawRowsTable st idx cfg rows
+    ImageSource {} ->
+      drawImageTable idx cfg (fromMaybe MediaLoading (safeIndex (tableMedia st) idx))
+    _ -> drawRowsTable st idx cfg rows
 
-drawImageTable :: Int -> TableConfig -> String -> Int -> Widget Name
-drawImageTable idx cfg imageUrl refreshSeconds = Widget Fixed Fixed $ do
+drawImageTable :: Int -> TableConfig -> MediaState -> Widget Name
+drawImageTable idx cfg media = Widget Fixed Fixed $ do
   ctx <- getContext
   let avail = availWidth ctx
       height = availHeight ctx
@@ -358,8 +75,12 @@ drawImageTable idx cfg imageUrl refreshSeconds = Widget Fixed Fixed $ do
       imageWidth = max 1 (avail - 2)
       availableImageHeight = max 1 (height - 2 - titleLines)
       imageHeight = min (maxColumnHeight cfg) availableImageHeight
-      image = renderImage imageUrl refreshSeconds imageWidth imageHeight
-      imageWidget = withAttr (textAttr idx) (raw image)
+      message text = V.vertCat (map (V.string V.defAttr) (wrapOrTruncate imageWidth imageHeight text))
+      image = case media of
+        MediaReady frame -> renderFrame imageWidth imageHeight frame
+        MediaLoading     -> message "Loading image..."
+        MediaFailed err  -> message ("Unable to render image: " ++ err)
+      imageWidget = withAttr (textAttr idx) (raw (V.resize imageWidth imageHeight image))
       titled widget =
         case title cfg of
           Just heading -> vBox [withAttr (tableTitleAttr idx) (str heading), padTop (Pad 1) widget]
