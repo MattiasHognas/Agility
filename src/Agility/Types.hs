@@ -2,6 +2,7 @@
 
 module Agility.Types where
 
+import           Agility.Media.Frame (Frame)
 import           Control.Applicative ((<|>))
 import           Control.Monad       (when)
 import           Data.Aeson          (FromJSON (parseJSON), Object,
@@ -53,7 +54,7 @@ data ColorConfig = ColorConfig
   { textColor         :: Maybe String,
     borderColor       :: Maybe String,
     titleColor        :: Maybe String,
-    pagingColor         :: Maybe String,
+    pagingColor       :: Maybe String,
     headerColor       :: Maybe String,
     selectedTextColor :: Maybe String,
     selectedBgColor   :: Maybe String
@@ -87,12 +88,21 @@ data St = St
     dashboardItems   :: [LayoutItem],
     tables           :: [TableConfig],
     tableRowsData    :: [[Row]],
+    tableMedia       :: [MediaState],
     configGeneration :: Int
   }
   deriving (Show)
 
+-- | What an image table currently has to show.
+data MediaState
+  = MediaLoading
+  | MediaFailed String
+  | MediaReady Frame
+  deriving (Show)
+
 data AppEvent
   = UpdateTable Int [Row] Int
+  | UpdateMedia Int MediaState Int
   | ReloadConfig [LayoutItem]
   deriving (Show)
 

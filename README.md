@@ -13,6 +13,14 @@ stack build
 stack exec Agility -- +RTS -N
 ```
 
+### Test
+
+```bash
+stack test
+```
+
+The PNG decoder is checked against every image in [PngSuite](http://www.schaik.com/pngsuite/) (`test/fixtures/pngsuite`), comparing decoded pixels with a reference decoder and requiring the deliberately corrupt images to be rejected.
+
 ### Lint and formatting
 
 ```bash
@@ -62,7 +70,7 @@ Dynamic sources support both remote JSON and local JSON files:
 }
 ```
 
-`image` sources fetch an image from a remote URL and render it in the terminal. The `url` value must be a web URL, not a local file path. Set `refreshSeconds` to `0` to fetch once and never refresh.
+`image` sources fetch a PNG from a remote URL and render it in the terminal with Agility's own decoder: all PNG colour types and bit depths, interlacing and transparency are supported. Each terminal cell shows two pixels stacked vertically, in 24-bit colour where the terminal supports it, and transparent areas show the terminal background. The `url` value must be a web URL, not a local file path. Set `refreshSeconds` to `0` to fetch once and never refresh.
 
 ```json
 {

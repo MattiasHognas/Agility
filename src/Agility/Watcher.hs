@@ -9,15 +9,15 @@ import           Agility.Config       (decodeLayoutConfig)
 import           Agility.Dashboard    (flattenLayoutItems)
 import           Agility.DataSource   (fetchLocalRows, fetchWebRows,
                                        safeGetModificationTime)
+import           Agility.Media        (loadImageUrl)
 import           Agility.Types        (AppEvent (..), LayoutItem,
                                        TableConfig (source),
-                                       TableSource (ImageSource, LocalSource,
-                                                    WebSource))
+                                       TableSource (ImageSource, LocalSource, WebSource))
 import           Brick.BChan          (BChan, writeBChan)
 import           Control.Concurrent   (MVar, ThreadId, forkIO, killThread,
                                        swapMVar, threadDelay)
 import           Control.Exception    (IOException, try)
-import           Control.Monad        (forever, void)
+import           Control.Monad        (forever, unless, void)
 import qualified Data.ByteString.Lazy as B
 
 refreshSourcesForLayout :: [LayoutItem] -> [(Int, TableSource)]
@@ -61,16 +61,16 @@ startSourceThreads gen sources chan = fmap catMaybes (mapM forkSource sources)
                   writeBChan chan (UpdateTable idx rows gen)
                   loop currentMod refresh
                 else loop currentMod (secondsUntilRefresh - 1)
-    forkSource (idx, ImageSource _ refresh) =
-      if refresh == 0
-        then pure Nothing
-        else
-          Just
-            <$> forkIO
-              ( forever $ do
-                  threadDelay (refresh * 1000000)
-                  writeBChan chan (UpdateTable idx [] gen)
-              )
+    forkSource (idx, ImageSource imageUrl refresh) =
+      Just <$> forkIO loop
+      where
+        -- A refresh of 0 loads the image once.
+        loop = do
+          media <- loadImageUrl imageUrl
+          writeBChan chan (UpdateMedia idx media gen)
+          unless (refresh == 0) $ do
+            threadDelay (refresh * 1000000)
+            loop
     forkSource _ = pure Nothing
 
 watchConfig :: FilePath -> BChan AppEvent -> MVar [ThreadId] -> IO ()
